@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="pastel">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>우드팩커 | 슬라이딩 붙박이장 자동 설계 계산기</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    plugins: [],
+    corePlugins: {
+      preflight: false, // Preflight 비활성화로 DaisyUI와의 충돌 방지
+    }
+  }
+</script>
+<link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+<link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
+<link rel="stylesheet" href="../common/common.css" />
+<link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+<div class="container">
+  <div class="card flex flex-row gap-2 items-center">
+    <div class="w-32 flex items-center justify-center hidden md:block">
+      <img src="../common/woodpecker_logo.png" alt="우드팩커" class="w-full">
+    </div>
+    <div class="flex flex-col gap-2 ml-4">
+      <div class="flex flex-row items-center gap-2">
+        <div class="w-12 flex items-center justify-center md:hidden">
+          <img src="../common/woodpecker_logo.png" alt="우드팩커" class="w-full">
+        </div>
+        <div class="md:text-2xl text-base">슬라이딩 붙박이장 자동 설계 계산기</div>
+      </div>
+      <div class="muted">
+        * 슬라이딩 붙박이장은 작은장이 없습니다.
+        <br/>
+        <!-- 허용 폭: <b>800 / 850 / 900 / 950 / 1000</b> · 도어(=통) 개수 자동 탐색 <b>2~4</b><br/> -->
+        <!-- <b>서라운드 자동 계산(최소 40mm/측)</b> -->
+        * 벽 전체 길이를 기준으로 좌우 여백은 자동계산됩니다.
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="summary-line">
+      <div class="font-bold mb-2">벽 전체 길이 (mm)</div>
+      <input id="wall" type="number" value="3600" min="1000" placeholder="예: 3600">
+    </div>
+    <div class="summary-line">
+      <b>허용 폭 (모두 동일폭 사용)</b>
+      <div class="checks">
+        <label class="inline"><input type="checkbox" class="checkbox checkbox-xs checkbox-secondary" id="w1000" checked> 1000</label>
+        <label class="inline"><input type="checkbox" class="checkbox checkbox-xs checkbox-secondary" id="w950" checked> 950</label>
+        <label class="inline"><input type="checkbox" class="checkbox checkbox-xs checkbox-secondary" id="w900" checked> 900</label>
+        <label class="inline"><input type="checkbox" class="checkbox checkbox-xs checkbox-secondary" id="w850" checked> 850</label>
+        <label class="inline"><input type="checkbox" class="checkbox checkbox-xs checkbox-secondary" id="w800" checked> 800</label>
+      </div>
+      <div class="muted">※ 슬라이딩은 통마다 폭이 모두 동일합니다.</div>
+    </div>
+    <div class="summary-line">
+      <b>도어(=통) 개수</b>
+      <div class="checks">
+        <label class="inline"><input type="checkbox" class="checkbox checkbox-xs checkbox-secondary" id="d2" checked> 2개</label>
+        <label class="inline"><input type="checkbox" class="checkbox checkbox-xs checkbox-secondary" id="d3" checked> 3개</label>
+        <label class="inline"><input type="checkbox" class="checkbox checkbox-xs checkbox-secondary" id="d4" checked> 4개</label>
+      </div>
+    </div>
+
+    <div class="w-full mt-5 flex justify-center">
+      <button class="text-base btn btn-wide btn-outline btn-info" id="calcBtn">계산하기</button>
+    </div>
+    
+    <div id="summary" style="margin-top:50px;"></div>
+  </div>
+
+  <div class="card" id="designCard" style="display:none;">
+    <h2 class="text-lg font-bold">디자인 선택 & 순서 편집</h2>
+    <div class="row gap-3">
+      <div>
+        <div id="slotsWrap"></div>
+      </div>
+      <div id="previewContainer">
+        <div class="preview-box"><canvas id="previewCanvas"></canvas></div>
+        <div class="mt-2 flex justify-center">
+          <button id="doorOpenBtn" class="btn btn-soft btn-secondary btn-active" onclick="setDoorMode('open')">도어 열림</button>
+          <button id="doorCloseBtn" class="btn btn-soft btn-secondary" onclick="setDoorMode('closed')">도어 닫힘</button>
+        </div>
+        <div class="mt-3">
+          <div class="text-sm font-bold text-center mb-2">도어 색상</div>
+          <div class="flex flex-wrap justify-center gap-4">
+            <label class="flex items-center gap-2">
+              <input type="radio" name="doorColor" value="swan-white" class="radio radio-secondary" style="border:1px solid #eee !important;" checked>
+              <span class="text-xs">스완화이트</span>
+            </label>
+            <label class="flex items-center gap-2">
+              <input type="radio" name="doorColor" value="warm-white" class="radio radio-secondary" style="border:1px solid #eee !important;">
+              <span class="text-xs">웜화이트</span>
+            </label>
+            <label class="flex items-center gap-2">
+              <input type="radio" name="doorColor" value="misty-gray" class="radio radio-secondary" style="border:1px solid #eee !important;">
+              <span class="text-xs">미스티그레이</span>
+            </label>
+            <label class="flex items-center gap-2">
+              <input type="radio" name="doorColor" value="silky-gray" class="radio radio-secondary" style="border:1px solid #eee !important;">
+              <span class="text-xs">실키그레이</span>
+            </label>
+          </div>
+        </div>
+        <div class="mt-10">
+          <div class="text-sm font-bold">COMPACT 시퀀스</div>
+          <div id="seqCompact" class="seq">-</div>
+          <button class="btn" style="margin-top:8px" onclick="copyCompact()">복사</button>
+          <div class="muted" style="margin-top:8px">
+            • 복사한 결과는 <b>상품 옵션 첫 칸(사이즈&디자인 구성)</b>에 붙여넣어 주세요.<br/>
+            • <span class="r">빨강</span>으로 표시된 <b>통(예: 9A, 9F…)</b>만 장바구니에 순서대로 담아 주세요.
+          </div>
+        </div>
+
+        <div class="flex justify-center my-10">
+          <button class="btn btn-wide btn-info text-lg" onclick="downloadPreview()">
+            최종이미지 저장
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- <div class="sticky">
+  <div class="muted">계산 → 추천안 선택 → 디자인 선택 → 시퀀스/이미지 저장</div>
+  <button class="btn" onclick="calculate()">계산하기</button>
+</div> -->
+
+<script src="assets/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="pastel">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>우드팩커 | 여닫이 붙박이장 자동 설계 계산기</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      plugins: [],
+      corePlugins: {
+        preflight: false, // Preflight 비활성화로 DaisyUI와의 충돌 방지
+      }
+    }
+  </script>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
+  <link rel="stylesheet" href="../common/common.css" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+<div class="container">
+  <div class="card flex flex-row gap-2 items-center">
+    <div class="w-32 flex items-center justify-center hidden md:block">
+      <img src="../common/woodpecker_logo.png" alt="우드팩커" class="w-full">
+    </div>
+    <div class="flex flex-col gap-2 ml-4">
+      <div class="flex flex-row items-center gap-2">
+        <div class="w-12 flex items-center justify-center md:hidden">
+          <img src="../common/woodpecker_logo.png" alt="우드팩커" class="w-full">
+        </div>
+        <div class="md:text-2xl text-base">🚪여닫이 붙박이장 자동 설계 계산기</div>
+      </div>
+      <div class="muted">
+        <!-- 여닫이 기준 
+        <br/> -->
+        <!-- <b>세트 자동배치(1000+500 / 950+475 / 900+450 / 850+425 / 800+400)</b> 
+        <br/> -->
+        * 여닫이의 작은장은 높이는 동일하고, 폭이 절반입니다.
+        <br/>
+        <!-- <b>스타일러(ST3=450 / ST5=600)</b>  -->
+        * 스타일러는 폭 450mm 또는 600mm 중 하나를 선택할 수 있습니다.
+        <br/>
+        <!-- <b>화장대(800 · PA/PB/PC)</b>는 체크 시 각 1통 고정 포함, 나머지 자동계산
+        <br/> -->
+        * 벽 전체 길이를 기준으로 좌우 여백은 자동계산됩니다.
+        <!-- 서라운드 자동 계산(최소 40mm/측) 
+        <br/> -->
+        <!-- 큰장 중앙 <b>3mm</b> 점선
+        <br/> -->
+        <!-- 도어 토글: 닫힘 시 큰장/작은장에 도어 오버레이 -->
+      </div>
+    </div>
+  </div>
+
+  <div class="card p-6">
+    <div class="row grid grid-cols-1 md:grid-cols-10 md:gap-20">
+      <div class="md:col-span-5">
+        <div class="summary-line">
+          <div class="font-bold mb-2">벽 전체 길이 (mm)</div>
+          <input id="wall" type="number" value="3700" min="1000" placeholder="예: 3700">
+        </div>
+        <div class="summary-line">
+          <b>허용 세트</b>
+          <div class="checks">
+            <label class="inline"><input type="checkbox" class="checkbox checkbox-xs checkbox-secondary" id="set105" checked> 1000 + 500</label>
+            <label class="inline"><input type="checkbox" class="checkbox checkbox-xs checkbox-secondary" id="set95" checked> 950 + 475</label>
+            <label class="inline"><input type="checkbox" class="checkbox checkbox-xs checkbox-secondary" id="set90" checked> 900 + 450</label>
+            <label class="inline"><input type="checkbox" class="checkbox checkbox-xs checkbox-secondary" id="set85" checked> 850 + 425</label>
+            <label class="inline"><input type="checkbox" class="checkbox checkbox-xs checkbox-secondary" id="set80" checked> 800 + 400</label>
+          </div>
+        </div>
+        <div class="summary-line">
+          <b>추가 옵션</b>
+          <div class="checks">
+            <label class="inline"><input type="checkbox" class="checkbox checkbox-xs checkbox-secondary" id="pairRequired"> 짝 필수(큰장+작은장 동시)</label>
+            <label class="inline"><input type="checkbox" class="checkbox checkbox-xs checkbox-secondary" id="onlyOddDoors"> 홀수 도어만</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="md:col-span-5">
+        <div class="summary-line">
+          <div><b>스타일러 포함</b></div>
+          <div class="flex flex-col md:flex-row md:items-center mt-2">
+            <label class="">
+              <input type="checkbox" class="checkbox checkbox-xs checkbox-secondary" id="stylerOn"> 사용(1통)
+            </label>
+            <div class="flex items-center gap-3">
+              <div class="font-bold ml-5">종류:</div>
+              <select id="stylerType" class="select select-secondary flex justify-center w-40">
+                <option value="450" selected>ST3 (450mm)</option>
+                <option value="600">ST5 (600mm)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="summary-line">
+          <div><b>화장대 포함</b></div>
+          <div class="flex flex-col md:flex-row md:items-center mt-2">
+            <label class="">
+              <input type="checkbox" class="checkbox checkbox-xs checkbox-secondary" id="powderOn"> 사용(1통) (폭 800mm)
+            </label>
+            <div class="flex items-center gap-3">
+              <div class="font-bold ml-5">디자인:</div>
+              <select id="powderDesign" class="select select-secondary flex justify-center w-24">
+                <option value="PA" selected>PA</option>
+                <option value="PB">PB</option>
+                <option value="PC">PC</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <!-- <div class="summary-line">
+          <b>도어 상태</b><br/>
+          <div class="mt-2">
+            <button id="doorOpenBtn" class="btn btn-soft btn-secondary btn-active" onclick="setDoorMode('open')">도어 열림</button>
+            <button id="doorCloseBtn" class="btn btn-soft btn-secondary" onclick="setDoorMode('closed')">도어 닫힘</button>
+          </div>
+        </div> -->
+      </div>
+    </div>
+
+    <div class="w-full mt-8 flex justify-center">
+      <button class="text-base btn btn-wide btn-outline btn-info" id="calcBtn">계산하기</button>
+    </div>
+
+    <div id="summary" style="margin-top:50px;"></div>
+  </div>
+
+  <div class="card" id="designCard" style="display:none;">
+    <h2 class="text-lg font-bold">디자인 선택 & 순서 편집</h2>
+    <div class="row gap-3">
+      <div id="slotsWrap"></div>
+      <div id="previewContainer">
+        <div class="text-lg text-center text-indigo-700 font-bold mt-5 mb-3">최종 미리보기</div>
+        <div class="preview-box"><canvas id="previewCanvas"></canvas></div>
+        <div class="mt-2 flex justify-center">
+          <button id="doorOpenBtn" class="btn btn-soft btn-secondary btn-active" onclick="setDoorMode('open')">도어 열림</button>
+          <button id="doorCloseBtn" class="btn btn-soft btn-secondary" onclick="setDoorMode('closed')">도어 닫힘</button>
+        </div>
+        <div class="mt-3">
+          <div class="text-sm font-bold text-center mb-2">도어 색상</div>
+          <div class="flex flex-wrap justify-center gap-4">
+            <label class="flex items-center gap-2">
+              <input type="radio" name="doorColor" value="swan-white" class="radio radio-secondary" style="border:1px solid #eee !important;" checked>
+              <span class="text-xs">스완화이트</span>
+            </label>
+            <label class="flex items-center gap-2">
+              <input type="radio" name="doorColor" value="warm-white" class="radio radio-secondary" style="border:1px solid #eee !important;">
+              <span class="text-xs">웜화이트</span>
+            </label>
+            <label class="flex items-center gap-2">
+              <input type="radio" name="doorColor" value="misty-gray" class="radio radio-secondary" style="border:1px solid #eee !important;">
+              <span class="text-xs">미스티그레이</span>
+            </label>
+            <label class="flex items-center gap-2">
+              <input type="radio" name="doorColor" value="silky-gray" class="radio radio-secondary" style="border:1px solid #eee !important;">
+              <span class="text-xs">실키그레이</span>
+            </label>
+          </div>
+        </div>
+        <div class="mt-3">
+          <div class="text-sm font-bold text-center mb-2">외부서랍 도어 (디자인I)</div>
+          <div class="flex flex-row justify-center">
+            <input type="checkbox" name="useExternalI" id="useExternalI" class="checkbox checkbox-xs checkbox-secondary" checked>
+            <label for="useExternalI" class="text-sm ml-2">사용</label>
+          </div>
+        </div>
+        <div class="mt-10">
+          <div class="text-sm font-bold">COMPACT 시퀀스</div>
+          <div id="seqCompact" class="seq">-</div>
+          <button class="btn" style="margin-top:8px" onclick="copyCompact()">복사</button>
+          <div class="muted" style="margin-top:8px">
+            • 복사한 결과는 <b>상품 옵션 첫 칸(사이즈&디자인 구성)</b>에 붙여넣어 주세요.<br/>
+            • <span class="r">빨강</span>으로 표시된 <b>통(예: 9A, 9F…)</b>만 장바구니에 순서대로 담아 주세요.
+          </div>
+        </div>
+
+        <div class="flex justify-center my-10">
+          <button class="btn btn-wide btn-info text-lg" onclick="downloadPreview()">
+            최종이미지 저장
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- <div class="sticky">
+  <div class="muted">계산 → 추천안 선택 → (필요시) 순서 편집·디자인 선택 → 시퀀스/이미지 저장</div>
+  <button class="btn" onclick="calculate()">계산하기</button>
+</div> -->
+
+<script src="assets/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>붙박이장 자동 설계 계산기 (도어 열림/닫힘)</title>
+<style>
+  :root{
+    --blue:#2563eb; --muted:#6b7280; --red:#d12c2c; --black:#111;
+    --bg:#f7f8fb; --card:#fff; --border:#e5e7eb;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:#1f2937;font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans KR",sans-serif}
+  .container{max-width:1000px;margin:0 auto;padding:20px 14px 160px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 6px 14px rgba(0,0,0,.05);padding:16px;margin-bottom:16px}
+  h1{margin:0 0 8px;font-size:20px} h2{margin:0 0 12px;font-size:16px}
+  .muted{color:var(--muted);font-size:13px}
+  input[type="number"]{width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px}
+  label.inline{display:flex;align-items:center;gap:8px}
+  .checks{display:flex;gap:12px;flex-wrap:wrap}
+  .btn{border:0;border-radius:10px;background:var(--blue);color:#fff;padding:9px 14px;cursor:pointer;font-size:14px}
+  .btn.ghost{background:transparent;color:var(--blue);border:1px solid var(--blue)}
+  .summary-line{margin:6px 0}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media (max-width:760px){.row{grid-template-columns:1fr}}
+  .slot{border:1px solid #eaf0f5;border-radius:12px;padding:10px;margin-bottom:12px}
+  .slot h3{margin:0 0 8px;font-size:14px;display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap}
+  .thumb-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .thumb{border:2px solid transparent;border-radius:10px;overflow:hidden;background:#fff;cursor:pointer;position:relative;min-height:84px;display:flex;align-items:center;justify-content:center}
+  .thumb.active{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.2)}
+  .thumb img{display:block;width:100%;height:auto}
+  .ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#6b7280;font-size:12px;border:1px dashed #cbd5e1;background:#fafafa}
+  .chip{font-size:11px;padding:2px 8px;border-radius:999px;background:#eef2ff;color:#1e3a8a;border:1px solid #c7d2fe}
+  .move{display:inline-flex;gap:6px}
+  .move button{border:1px solid #cbd5e1;background:#fff;color:#111;border-radius:6px;padding:4px 8px;cursor:pointer}
+  .preview-box{border:1px solid var(--border);border-radius:12px;background:#fff;display:flex;justify-content:center;align-items:center;min-height:160px;overflow:auto}
+  .seq{background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px;font-family:ui-monospace,Menlo,Consolas,monospace}
+  .seq .r{ color:#d12c2c; font-weight:600; } /* 통(빨강) */
+  .seq .k{ color:#111; font-weight:700; } /* 서라운드(L/R=검정) */
+  .sticky{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.97);border-top:1px solid var(--border);backdrop-filter:blur(6px);padding:10px 14px;display:grid;grid-template-columns:1fr auto;gap:10px}
+  .toggle{display:inline-flex;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+  .toggle button{border:0;background:#fff;padding:8px 12px;cursor:pointer}
+  .toggle button.active{background:#111;color:#fff}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="card">
+    <h1>📐 붙박이장 자동 설계 계산기 (도어 열림/닫힘)</h1>
+    <div class="muted">
+      여닫이 기준 · <b>세트 자동배치(1000+500 / 950+475 / 900+450 / 850+425 / 800+400)</b> · 작은장: 높이 동일·폭 절반<br/>
+      <b>스타일러(ST3=450 / ST5=600)</b> · <b>화장대(800 · PA/PB/PC)</b>는 체크 시 각 1통 고정 포함, 나머지 자동계산<br/>
+      서라운드 자동 계산(최소 40mm/측) · 미리보기 통끼리 <b>완전 밀착</b> · 큰장 중앙 <b>3mm</b> 점선<br/>
+      <b>도어 토글</b>: 닫힘 시 큰장/작은장에 도어 오버레이
+    </div>
+    <div class="muted" style="margin-top:8px;display:flex;gap:14px;flex-wrap:wrap">
+      <label class="inline"><input type="checkbox" id="imgDebug"> 이미지 경로 디버그</label>
+      <!-- I 디자인 외부서랍 도어 적용 토글 (기본 OFF) -->
+      <label class="inline"><input type="checkbox" id="useExternalI"> I 디자인 외부서랍 도어 적용(닫힘 시)</label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>입력</h2>
+    <div class="row">
+      <div>
+        <div class="summary-line">
+          <label>벽 전체 길이 (mm)<br>
+            <input id="wall" type="number" value="3700" min="1000" placeholder="예: 3700">
+          </label>
+        </div>
+        <div class="summary-line">
+          <b>허용 세트</b>
+          <div class="checks">
+            <label class="inline"><input type="checkbox" id="set105" checked> 1000 + 500</label>
+            <label class="inline"><input type="checkbox" id="set95" checked> 950 + 475</label>
+            <label class="inline"><input type="checkbox" id="set90" checked> 900 + 450</label>
+            <label class="inline"><input type="checkbox" id="set85" checked> 850 + 425</label>
+            <label class="inline"><input type="checkbox" id="set80" checked> 800 + 400</label>
+          </div>
+        </div>
+        <div class="summary-line">
+          <b>추가 옵션</b>
+          <div class="checks">
+            <label class="inline"><input type="checkbox" id="pairRequired"> 짝 필수(큰장+작은장 동시)</label>
+            <label class="inline"><input type="checkbox" id="onlyOddDoors"> 홀수 도어만</label>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="summary-line">
+          <b>스타일러 포함</b>
+          <div class="checks" style="gap:8px;align-items:center">
+            <label class="inline"><input type="checkbox" id="stylerOn"> 사용(1통)</label>
+            <label class="inline">종류:
+              <select id="stylerType">
+                <option value="450">ST3 (450mm)</option>
+                <option value="600">ST5 (600mm)</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div class="summary-line">
+          <b>화장대 포함</b>
+          <div class="checks" style="gap:8px;align-items:center">
+            <label class="inline"><input type="checkbox" id="powderOn"> 사용(1통)</label>
+            <span class="muted">폭 800mm · 디자인:</span>
+            <label class="inline">
+              <select id="powderDesign">
+                <option value="PA">PA</option>
+                <option value="PB">PB</option>
+                <option value="PC">PC</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div class="summary-line">
+          <b>도어 상태</b><br/>
+          <div class="toggle">
+            <button id="doorOpenBtn" class="active" onclick="setDoorMode('open')">도어 열림</button>
+            <button id="doorCloseBtn" onclick="setDoorMode('closed')">도어 닫힘</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn" id="calcBtn">계산하기</button>
+    <div id="summary" style="margin-top:10px;"></div>
+  </div>
+
+  <div class="card" id="designCard" style="display:none;">
+    <h2>디자인 선택 & 순서 편집</h2>
+    <div class="row">
+      <div>
+        <div id="slotsWrap"></div>
+      </div>
+      <div>
+        <div class="preview-box"><canvas id="previewCanvas"></canvas></div>
+
+        <div style="margin-top:12px">
+          <label>COMPACT 시퀀스 <small>(공백 없음 · <span class="k">검정=L/R</span>, <span class="r">빨강=각 통</span>)</small></label>
+          <div id="seqCompact" class="seq">-</div>
+          <button class="btn" style="margin-top:8px" onclick="copyCompact()">복사</button>
+          <div class="muted" style="margin-top:8px">
+            • 복사한 결과는 <b>상품 옵션 첫 칸(사이즈&디자인 구성)</b>에 붙여넣어 주세요.<br/>
+            • <span class="r">빨강</span>으로 표시된 <b>통(예: 9A, 9F…)</b>만 장바구니에 순서대로 담아 주세요. (L/R은 서라운드라 담지 않음)
+          </div>
+        </div>
+
+        <div style="margin-top:14px">
+          <button class="btn" onclick="downloadPreview()">최종이미지 저장</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="sticky">
+  <div class="muted">계산 → 추천안 선택 → (필요시) 순서 편집·디자인 선택 → 시퀀스/이미지 저장</div>
+  <button class="btn" onclick="calculate()">계산하기</button>
+</div>
+
+<script>
+  // ------- 설정값
+  const MIN_SURROUND = 40;
+  const DOOR_GAP_MM = 3; // 큰장 중앙 간격(점선용)
+  const LEFTOVER_TIE = 20;
+
+  const SETS = [
+    { id:"set105", name:"1000+500", big:1000, small:500, priority:0 },
+    { id:"set95", name:"950+475", big:950, small:475, priority:1 },
+    { id:"set90", name:"900+450", big:900, small:450, priority:2 },
+    { id:"set85", name:"850+425", big:850, small:425, priority:3 },
+    { id:"set80", name:"800+400", big:800, small:400, priority:4 },
+  ];
+  const LETTERS_BIG = ["A","B","C","D","E","F","G","H","I"];
+  const LETTERS_SMALL = ["A","B","C","G","H","I"]; // 작은장 허용 글자
+
+  // 이미지 베이스네임 매핑(확장자 없이)
+  const IMG_BIG   = Object.fromEntries(LETTERS_BIG.map(ch => [ch, `design_${ch}`]));
+  const IMG_SMALL = Object.fromEntries(LETTERS_SMALL.map(ch => [ch, `s_design_${ch}`]));
+
+  // 스타일러/화장대/도어(베이스네임)
+  const STYLER_BASE = { ST3: "styler_ST3", ST5: "styler_ST5" };
+  const POWDER_BASE = { PA: "powder_PA", PB: "powder_PB", PC: "powder_PC" };
+  const DOOR_BASE   = { big: "door_big",  small: "door_small" };
+  // 외부서랍(I 전용) 도어 오버레이
+  const DOOR_EXT_I  = { big: "door_big_I", small: "door_small_I" };
+
+  // 상태
+  let topRows = [];
+  let currentPlan = null;
+  let units = []; // [{type:"big"/"small"/"styler"/"powder", w, code}]
+  let selections = []; // big/small=A~I, styler=ST3/ST5, powder=PA/PB/PC
+  let doorMode = 'open'; // 'open' | 'closed'
+
+  // 이벤트
+  document.getElementById('calcBtn').addEventListener('click', calculate);
+  document.getElementById('wall').addEventListener('keydown', e=>{ if(e.key==='Enter') calculate(); });
+  document.getElementById('useExternalI').addEventListener('change', ()=>renderPreview());
+
+  function setDoorMode(mode){
+    doorMode = mode;
+    document.getElementById('doorOpenBtn').classList.toggle('active', mode==='open');
+    document.getElementById('doorCloseBtn').classList.toggle('active', mode==='closed');
+    renderPreview();
+  }
+
+  // 유틸
+  // ✅ 소수점 둘째 자리 표기 (475 -> 4.75, 425 -> 4.25, 450 -> 4.5)
+  function mmToDmStr(mm){
+    const dm = mm / 100;
+    return dm.toFixed(2).replace(/\.?0+$/, '');
+  }
+
+  // 이미지 경로/확장자 자동 탐색
+  const IMG_BASES = ["", "./", "images/", "./images/"];
+  // GIF 도 포함(외부서랍 도어가 gif일 가능성 대비)
+  const IMG_EXTS  = [".png", ".webp", ".jpg", ".jpeg", ".gif", ".PNG", ".JPG", ".GIF"];
+
+  function getDesignImageBase(type, letter){
+    if(type === "big") return IMG_BIG[letter];
+    return IMG_SMALL[letter] || IMG_BIG[letter];
+  }
+  function buildCandidatesFromBase(baseName){
+    const out = [];
+    if(!baseName) return out;
+    for(const dir of IMG_BASES){
+      for(const ext of IMG_EXTS){
+        const p = dir + baseName + ext;
+        if(!out.includes(p)) out.push(p);
+      }
+    }
+    return out;
+  }
+  function loadImageSeq(candidates){
+    return new Promise((resolve,reject)=>{
+      if(!candidates || !candidates.length) return reject(new Error("no candidates"));
+      let i=0; const img = new Image();
+      img.crossOrigin = 'anonymous'; 
+      img.onload = ()=>resolve(img);
+      img.onerror = ()=>{ i++; if(i<candidates.length){ img.src = candidates[i]; } else { reject(new Error("all failed: "+candidates.join(", "))); } };
+      img.src = candidates[i];
+    });
+  }
+
+  function makeThumbWithFallback(srcBase, label){
+    const wrap=document.createElement('div'); wrap.className="thumb";
+    const img=document.createElement('img'); img.alt=label;
+    const ph=document.createElement('div'); ph.className="ph"; ph.textContent=label+" (이미지 자리)";
+    ph.style.display="none";
+
+    // 디버그 라벨
+    const dbg=document.createElement('div');
+    dbg.style.position='absolute'; dbg.style.bottom='4px'; dbg.style.left='6px'; dbg.style.right='6px';
+    dbg.style.fontSize='10px'; dbg.style.color='#888'; dbg.style.display='none';
+
+    wrap.appendChild(img); wrap.appendChild(ph); wrap.appendChild(dbg);
+
+    const cands = buildCandidatesFromBase(srcBase);
+    let idx = 0;
+
+    function showFail(){
+      img.style.display="none"; ph.style.display="flex";
+      if(window.__imgDebugOn){ dbg.style.display='block'; dbg.textContent="not found: "+(cands[idx-1]||"(none)"); }
+    }
+    if(!cands.length){ showFail(); return wrap; }
+
+    img.onerror = ()=>{ idx++; if(idx<cands.length){ img.src=cands[idx]; } else { showFail(); } };
+    img.onload  = ()=>{ img.style.display="block"; ph.style.display="none"; dbg.style.display = window.__imgDebugOn ? 'block' : 'none'; dbg.textContent = img.src; };
+    img.src = cands[idx];
+    return wrap;
+  }
+
+  // ---- 계산
+  function calculate(){
+    try{
+      const wall = parseInt(document.getElementById('wall').value,10);
+      const pairRequired = document.getElementById('pairRequired')?.checked || false;
+      const onlyOdd = document.getElementById('onlyOddDoors')?.checked || false;
+      const summary = document.getElementById('summary');
+      summary.innerHTML=""; document.getElementById('designCard').style.display="none";
+      if(!wall || wall<1000){ summary.innerHTML="<div style='color:#b00020'>⚠️ 1000mm 이상 입력</div>"; return; }
+
+      const enabledSets = SETS.filter(s=>document.getElementById(s.id).checked);
+      if(enabledSets.length===0){ summary.innerHTML="<div style='color:#b00020'>⚠️ 최소 1개 세트를 선택</div>"; return; }
+
+      // 고정 통(체크만, 각 1통)
+      const styOn = document.getElementById('stylerOn').checked;
+      const styW = parseInt(document.getElementById('stylerType').value,10); // 450/600
+      const powOn = document.getElementById('powderOn').checked;
+      const powD = document.getElementById('powderDesign').value; // PA/PB/PC
+
+      const fixedUnits = [];
+      if(styOn) fixedUnits.push({type:"styler", w:styW, code:(styW===450?"ST3":"ST5")});
+      if(powOn) fixedUnits.push({type:"powder", w:800, code:powD});
+
+      const fixedUsed = fixedUnits.reduce((s,u)=>s+u.w,0);
+      if(fixedUsed>wall){ summary.innerHTML="<div style='color:#b00020'>⚠️ 고정 통의 총 폭이 벽 길이를 초과합니다.</div>"; return; }
+
+      // 남는 구간을 세트로 채우는 모든 후보 탐색
+      let rows=[];
+      for(const set of enabledSets){
+        for(let bc=0;bc<=14;bc++){
+          for(let sc=0;sc<=14;sc++){
+            if(bc===0&&sc===0 && fixedUnits.length===0) continue;
+            if(pairRequired && (bc===0 || sc===0) && (bc+sc>0)) continue;
+
+            const used = fixedUsed + (set.big*bc + set.small*sc);
+            if(used>wall) continue;
+
+            const leftover = wall - used;
+            const surround = leftover/2;
+            if(surround<MIN_SURROUND) continue;
+
+            const doors = 2*bc + sc + fixedUnits.length; // 큰장=2, 작은장=1, 스타일러/화장대=1
+            if(onlyOdd && doors%2===0) continue;
+
+            rows.push({
+              set:set.name, big:set.big, small:set.small,
+              bc, sc, used, leftover, surround, doors, priority:set.priority,
+              fixed: JSON.parse(JSON.stringify(fixedUnits))
+            });
+          }
+        }
+      }
+      if(rows.length===0){ summary.innerHTML="<div style='color:#b00020'>조건에 맞는 조합 없음</div>"; return; }
+
+      rows.sort((a,b)=>{
+        const near = Math.abs(a.leftover-b.leftover)<=LEFTOVER_TIE;
+        if(near && a.priority!==b.priority) return a.priority-b.priority;
+        if(a.leftover!==b.leftover) return a.leftover-b.leftover;
+        if(a.doors!==b.doors) return a.doors-b.doors;
+        return (a.bc+a.sc)-(b.bc+b.sc);
+      });
+
+      topRows = rows.slice(0,3);
+      summary.innerHTML="<div style='color:#087443'><b>✅ 추천 조합 Top3 (서라운드 우선)</b></div>"+
+        topRows.map((r,i)=>`<div class='summary-line'>
+          <button class='btn ghost' onclick='choosePlan(${i})'>${i+1}안 선택</button>
+          ${r.set} · 큰장${r.bc} 작은장${r.sc}${r.fixed.length?` · 고정통 ${r.fixed.length}개`:``}
+          · 도어 ${r.doors}개 · 서라운드 ${Math.round(r.surround)}mm/측 (남는폭 ${r.leftover}mm)
+        </div>`).join("");
+    }catch(err){
+      alert("오류가 발생했습니다: "+err.message);
+      console.error(err);
+    }
+  }
+
+  function choosePlan(idx){
+    const r=topRows[idx]; currentPlan=r;
+
+    // 기본 배열: 큰장들 → 작은장들 → 고정통(스타일러, 화장대)
+    units=[];
+    for(let i=0;i<r.bc;i++) units.push({type:"big", w:r.big, code:""});
+    for(let i=0;i<r.sc;i++) units.push({type:"small", w:r.small, code:""});
+    r.fixed.forEach(f=>units.push({...f}));
+
+    // 초기 선택
+    selections = units.map(u=>{
+      if(u.type==="big") return "A";
+      if(u.type==="small") return "A";
+      if(u.type==="styler")return u.code; // ST3/ST5
+      if(u.type==="powder")return u.code; // PA/PB/PC
+      return "A";
+    });
+
+    renderSlots();
+    document.getElementById('designCard').style.display="block";
+    updateCompact(); renderPreview();
+    window.scrollTo({ top: document.getElementById('designCard').offsetTop-10, behavior:'smooth' });
+  }
+
+  function renderSlots(){
+    const wrap=document.getElementById('slotsWrap'); wrap.innerHTML="";
+    units.forEach((u,idx)=>{
+      const slot=document.createElement('div'); slot.className="slot";
+      const kindLabel = u.type==="big" ? "큰장" : u.type==="small" ? "작은장" : (u.type==="styler"?"스타일러":"화장대");
+      const chip = `<span class="chip">${kindLabel}</span>`;
+      slot.innerHTML = `<h3>${idx+1}통 ${chip} <span class="muted">${u.w}mm</span>
+        <span class="move">
+          <button onclick="moveUnit(${idx},-1)">←</button>
+          <button onclick="moveUnit(${idx},1)">→</button>
+        </span>
+      </h3>`;
+
+      const grid=document.createElement('div'); grid.className="thumb-grid";
+
+      if(u.type==="big" || u.type==="small"){
+        const letters = (u.type==="big")?LETTERS_BIG:LETTERS_SMALL;
+        letters.forEach(letter=>{
+          const div=makeThumbWithFallback(getDesignImageBase(u.type, letter), letter);
+          if(selections[idx]===letter) div.classList.add('active');
+          div.addEventListener('click',()=>{
+            selections[idx]=letter;
+            grid.querySelectorAll('.thumb').forEach(t=>t.classList.remove('active'));
+            div.classList.add('active');
+            updateCompact(); renderPreview();
+          });
+          grid.appendChild(div);
+        });
+      }else if(u.type==="styler"){
+        ["ST3","ST5"].forEach(code=>{
+          const div = makeThumbWithFallback(STYLER_BASE[code], code);
+          if(selections[idx]===code) div.classList.add('active');
+          div.addEventListener('click',()=>{
+            selections[idx]=code; units[idx].code=code; units[idx].w=(code==="ST3"?450:600);
+            grid.querySelectorAll('.thumb').forEach(t=>t.classList.remove('active'));
+            div.classList.add('active');
+            updateCompact(); renderPreview();
+          });
+          grid.appendChild(div);
+        });
+      }else if(u.type==="powder"){
+        ["PA","PB","PC"].forEach(code=>{
+          const div = makeThumbWithFallback(POWDER_BASE[code], code);
+          if(selections[idx]===code) div.classList.add('active');
+          div.addEventListener('click',()=>{
+            selections[idx]=code; units[idx].code=code;
+            grid.querySelectorAll('.thumb').forEach(t=>t.classList.remove('active'));
+            div.classList.add('active');
+            updateCompact(); renderPreview();
+          });
+          grid.appendChild(div);
+        });
+      }
+
+      slot.appendChild(grid);
+      wrap.appendChild(slot);
+    });
+  }
+
+  function moveUnit(i,dir){
+    const j=i+dir; if(j<0||j>=units.length) return;
+    [units[i],units[j]]=[units[j],units[i]];
+    [selections[i],selections[j]]=[selections[j],selections[i]];
+    renderSlots(); updateCompact(); renderPreview();
+  }
+
+  // ---- 시퀀스 (공백 없음 / 통=빨강, L/R=검정)
+  function buildCompact(){
+    if(!currentPlan) return {html:"-", text:"-"};
+    const surr = Math.round(currentPlan.surround);
+    const surrDm = mmToDmStr(surr*10);
+    const left = `<span class="k">${surrDm}L</span>`;
+    const right = `<span class="k">${surrDm}R</span>`;
+    const mids = units.map((u,idx)=>{
+      const dm = mmToDmStr(u.w);
+      const code = selections[idx];
+      return `<span class="r">${dm}${code}</span>`;
+    });
+    const html = [left, ...mids, right].join('-');
+    const text = html.replace(/<[^>]+>/g,'');
+    return {html,text};
+  }
+  function updateCompact(){
+    const o=buildCompact();
+    const box=document.getElementById('seqCompact');
+    box.innerHTML=o.html; box.dataset.copy=o.text;
+  }
+  function copyCompact(){
+    const box=document.getElementById('seqCompact');
+    const raw=box.dataset.copy || box.textContent;
+    navigator.clipboard.writeText(raw).then(()=>alert("복사됨"));
+  }
+
+  // ---- 미리보기 (통 밀착, 큰장 중앙 3mm 점선; 스타일러/화장대는 점선 없음)
+  async function renderPreview(){
+    const canvas=document.getElementById('previewCanvas'), ctx=canvas.getContext('2d');
+    if(!currentPlan){canvas.width=0;canvas.height=0;return;}
+    const unitH=260, labelH=26, gap=0;
+    let pxPerMm=0.16;
+
+    const totalMm = units.reduce((s,u)=>s+u.w,0);
+    let sPx = Math.max(3, Math.round(currentPlan.surround*pxPerMm));
+    let totalW = sPx + totalMm*pxPerMm + gap*(units.length-1) + sPx;
+    const maxW=1200;
+    if(totalW>maxW){
+      const mmPart=(totalMm*pxPerMm)+(2*sPx);
+      const scale=(maxW - gap*(units.length-1)) / mmPart;
+      pxPerMm*=scale; sPx=Math.max(3,Math.round(currentPlan.surround*pxPerMm));
+      totalW=Math.round(sPx + totalMm*pxPerMm + gap*(units.length-1) + sPx);
+    }
+    canvas.width=totalW; canvas.height=unitH+labelH;
+    ctx.fillStyle="#fff"; ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    // 좌 서라운드
+    let x=0;
+    ctx.fillStyle="#f0f0f0"; ctx.fillRect(x,0,sPx,unitH);
+    ctx.strokeStyle="#cfcfcf"; ctx.strokeRect(x+0.5,0.5,sPx-1,unitH-1);
+    ctx.fillStyle="#555"; ctx.font="12px system-ui"; ctx.textAlign="center";
+    ctx.fillText(`L${Math.round(currentPlan.surround)}mm`, x + sPx/2, unitH-8);
+    x+=sPx;
+
+    for(let i=0;i<units.length;i++){
+      const u=units[i], w=u.w*pxPerMm;
+
+      // 1) 속장 이미지
+      if(u.type==="big" || u.type==="small"){
+        const letter=selections[i], baseName=getDesignImageBase(u.type, letter);
+        try{
+          const img=await loadImageSeq(buildCandidatesFromBase(baseName));
+          const ratio=Math.min(w/img.width, unitH/img.height);
+          const dw=Math.round(img.width*ratio), dh=Math.round(img.height*ratio);
+          const ix=x + Math.round((w-dw)/2), iy=Math.round((unitH-dh)/2);
+          ctx.drawImage(img, ix, iy, dw, dh);
+        }catch(e){
+          fallbackBox(ctx,x,w,unitH, letter || (u.type==="big"?"B":"S"));
+        }
+      }else{
+        // 스타일러/화장대
+        const code = u.code || (u.type==="styler"?(u.w===450?"ST3":"ST5"):"PA");
+        const base = (u.type==="styler"? STYLER_BASE[code] : POWDER_BASE[code]) || null;
+        if(base){
+          try{
+            const img=await loadImageSeq(buildCandidatesFromBase(base));
+            const ratio=Math.min(w/img.width, unitH/img.height);
+            const dw=Math.round(img.width*ratio), dh=Math.round(img.height*ratio);
+            const ix=x + Math.round((w-dw)/2), iy=Math.round((unitH-dh)/2);
+            ctx.drawImage(img, ix, iy, dw, dh);
+          }catch(e){
+            fallbackBox(ctx,x,w,unitH,code);
+          }
+        }else{
+          fallbackBox(ctx,x,w,unitH,code);
+        }
+      }
+
+      // 2) 도어 닫힘 모드일 때, 도어 오버레이
+      if(doorMode==='closed' && (u.type==='big' || u.type==='small')){
+        const externalOn = !!document.getElementById('useExternalI')?.checked;
+        const isI = selections[i] === 'I';
+
+        // 우선순위: 외부서랍 토글 ON + I 선택 → 외부서랍 도어 시도 → 실패시 기본 도어
+        const tryOrder = [];
+        if(externalOn && isI){
+          tryOrder.push(u.type==='big' ? DOOR_EXT_I.big : DOOR_EXT_I.small);
+        }
+        tryOrder.push(u.type==='big' ? DOOR_BASE.big : DOOR_BASE.small);
+
+        let overlayImg=null;
+        for(const base of tryOrder){
+          try{
+            overlayImg = await loadImageSeq(buildCandidatesFromBase(base));
+            if(overlayImg) break;
+          }catch(e){ /* 다음 후보로 */ }
+        }
+
+        if(overlayImg){
+          ctx.drawImage(overlayImg, x, 0, w, unitH);
+        }else{
+          ctx.save();
+          ctx.fillStyle="rgba(0,0,0,0.04)"; ctx.fillRect(x,0,w,unitH);
+          ctx.restore();
+        }
+      }
+
+      // 큰장 중앙 3mm 점선
+      if(u.type==='big'){
+        const gapPx=Math.max(1, DOOR_GAP_MM*pxPerMm);
+        const mid=x + w/2;
+        ctx.save(); ctx.strokeStyle="#8aa3ff"; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+        ctx.beginPath(); ctx.moveTo(Math.round(mid-gapPx/2)+0.5,0); ctx.lineTo(Math.round(mid-gapPx/2)+0.5,unitH); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(Math.round(mid+gapPx/2)+0.5,0); ctx.lineTo(Math.round(mid+gapPx/2)+0.5,unitH); ctx.stroke();
+        ctx.restore();
+      }
+
+      // 하단 폭 라벨
+      ctx.fillStyle="#111"; ctx.font="12px system-ui"; ctx.textAlign="center";
+      ctx.fillText(`${u.w}mm`, x + w/2, unitH + labelH - 8);
+
+      x += w; // 통 밀착
+    }
+
+    // 우 서라운드
+    ctx.fillStyle="#f0f0f0"; ctx.fillRect(x,0,sPx,unitH);
+    ctx.strokeStyle="#cfcfcf"; ctx.strokeRect(x+0.5,0.5,sPx-1,unitH-1);
+    ctx.fillStyle="#555"; ctx.fillText(`R${Math.round(currentPlan.surround)}mm`, x + sPx/2, unitH-8);
+  }
+
+  function fallbackBox(ctx,x,w,h,text){
+    ctx.strokeStyle="#999"; ctx.strokeRect(x+4,4,w-8,h-8);
+    ctx.fillStyle="#333"; ctx.font="bold 18px system-ui"; ctx.textAlign="center";
+    ctx.fillText(text, x + w/2, h/2 + 6);
+  }
+
+  // ---- 이미지 저장(견고한 버전: toBlob → Blob URL → dataURL 폴백)
+  function downloadPreview(){
+    const c = document.getElementById('previewCanvas');
+    if (!c || c.width === 0) {
+      alert("먼저 디자인을 선택하세요.");
+      return;
+    }
+    const filename = `최종조립_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.png`;
+
+    // 1) 가장 안정적인 경로: toBlob → Blob URL → a.download
+    if (c.toBlob) {
+      try {
+        c.toBlob(function(blob){
+          if (!blob) { fallbackWithDataURL(); return; }
+          if (window.navigator && window.navigator.msSaveOrOpenBlob) {
+            window.navigator.msSaveOrOpenBlob(blob, filename);
+            return;
+          }
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 0);
+        }, 'image/png');
+        return;
+      } catch (e) { fallbackWithDataURL(e); return; }
+    }
+
+    // 2) 폴백: dataURL → a.download 또는 새창
+    function fallbackWithDataURL(err){
+      try {
+        const dataURL = c.toDataURL('image/png');
+        const a = document.createElement('a');
+        a.href = dataURL; a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      } catch (e) {
+        try {
+          const dataURL = c.toDataURL('image/png');
+          window.open(dataURL, '_blank');
+        } catch (finalErr) {
+          alert("이미지 저장이 차단되었습니다. \n" +
+                "• 이미지가 외부 도메인이라면 같은 폴더(또는 images/)로 복사해 사용하세요.\n" +
+                "• 또는 간단한 로컬 서버(예: VS Code Live Server)로 http에서 열어주세요.");
+          console.error(finalErr || e || err);
+        }
+      }
+    }
+  }
+
+  // 이미지 디버그 토글
+  (function(){
+    const el = document.getElementById('imgDebug');
+    if(el){
+      el.addEventListener('change', ()=>{
+        window.__imgDebugOn = !!el.checked;
+        renderSlots && renderSlots();
+        renderPreview && renderPreview();
+      });
+    }
+  })();
+</script>
+</body>
+</html>

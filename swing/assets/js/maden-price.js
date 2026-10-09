@@ -12,13 +12,28 @@
     smallDrawer: 30000,        // 작은장 서랍 1개 (소서랍)
     powder: { PA: 680000, PB: 780000, PC: 880000 }, // 화장대(800) 1통
     mirrorDoor: 150000,        // 거울도어 1개
+    innerMirror: 40000,        // 도어 안쪽 부착거울 300×1500 1개
+    longShelf: 20000,          // 긴 선반 추가 1개
+    shortShelf: 10000,         // 짧은 선반 추가 1개
     sidePanel: 90000,          // 측판 1개
     demolition: 100000,        // 기존장 철거 및 내림
-    visitDesign: 50000,        // 방문설계서비스
+    visitMeasure: 50000,       // 방문실측서비스
+    design3d: 50000,           // 3D도면서비스
   };
   const DRAWERS = { G: 1, H: 2, I: 3 };           // 디자인별 서랍 개수 (나머지 무료)
   const COLORS = ['스완화이트', '웜화이트', '미스티그레이', '실키그레이', '콘크리트화이트'];
+  // 색상 견본 (실제 자재 색에 맞게 숫자만 바꾸면 됨)
+  const COLOR_HEX = { '스완화이트': '#F8F7F3', '웜화이트': '#F0E8D8', '미스티그레이': '#CFCECA', '실키그레이': '#A8A7A2', '콘크리트화이트': '#DAD8D2' };
   const HANDLES = ['푸쉬', '스마트바', '레세르', '르씰'];
+  // 손잡이 색상 (견본 색은 숫자만 바꾸면 됨)
+  const HANDLE_COLORS = {
+  };
+  const hcList = h => Object.keys(HANDLE_COLORS[h] || {});
+  // 레세르·스마트바는 도어 색을 따라감: 그레이 도어 → 그레이, 나머지 → 화이트
+  const GRAY_DOORS = ['미스티그레이', '실키그레이'];
+  const AUTO_HANDLE = { '레세르': true, '스마트바': true, '르씰': true };
+  const autoTone = () => GRAY_DOORS.includes(state.color) ? '그레이' : '화이트';
+  const handleName = () => state.handle + (AUTO_HANDLE[state.handle] ? `(${autoTone()})` : hcList(state.handle).length ? `(${state.hcolor})` : '');
   const STORE_URL = 'https://smartstore.naver.com/woodpecker77/products/13625382270';
   const KAKAO_URL = 'https://pf.kakao.com/_xjJTLC/chat';
   let MODE = (window.MADEN_MODE === 'order') ? 'order' : 'store';
@@ -39,6 +54,7 @@
   .mp-chip{border:1px solid #e5d6d3;border-radius:999px;padding:7px 12px;font-size:13px;cursor:pointer;background:#fff;user-select:none}
   .mp-chip.on{background:#673131;color:#fff;border-color:#673131}
   .mp-chip small{opacity:.75;margin-left:4px}
+  .mp-sw{display:inline-block;width:14px;height:14px;border-radius:3px;border:1px solid rgba(0,0,0,.25);vertical-align:-2px;margin-right:6px}
   .mp-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px dashed #eee;font-size:14px}
   .mp-row:last-child{border-bottom:0}
   .mp-row .n{font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -84,8 +100,9 @@
 
   // ---------- 상태 ----------
   const state = {
-    color: COLORS[0], handle: HANDLES[0],
-    mirror: 0, side: 0, demolition: false, visit: false,
+    color: COLORS[0], handle: HANDLES[0], hcolor: '',
+    mirror: 0, side: 0, demolition: false, visit: false, d3: false,
+    longShelf: 0, shortShelf: 0, addBig: 0, addSmall: 0, innerMirror: 0,
   };
 
   // ---------- UI ----------
@@ -117,29 +134,99 @@
     optCard.innerHTML = `
       <div class="mp-title">색상 · 손잡이 · 추가 옵션</div>
       <div class="mp-field" style="margin-bottom:14px"><label>도어 색상</label><div class="mp-chips">
-        ${COLORS.map(c => chip('color', c, c + (PRICE.colorExtraPer10cm[c] ? `<small>+10cm당 ${PRICE.colorExtraPer10cm[c].toLocaleString()}원</small>` : ''))).join('')}
+        ${COLORS.map(c => chip('color', c, `<i class="mp-sw" style="background:${COLOR_HEX[c]}"></i>` + c + (PRICE.colorExtraPer10cm[c] ? `<small>+10cm당 ${PRICE.colorExtraPer10cm[c].toLocaleString()}원</small>` : ''))).join('')}
       </div></div>
       <div class="mp-field" style="margin-bottom:14px"><label>손잡이</label><div class="mp-chips">
         ${HANDLES.map(h => chip('handle', h, h)).join('')}
-      </div></div>
+      </div>
+      ${hcList(state.handle).length ? `<div class="mp-chips" style="margin-top:8px">${hcList(state.handle).map(c => chip('hcolor', c, `<i class="mp-sw" style="background:${HANDLE_COLORS[state.handle][c]}"></i>` + c)).join('')}</div>` : ''}
+      </div>
       <div class="mp-field"><label>추가 옵션 (필요할 때만)</label>
         ${stepper('mirror', '거울도어', PRICE.mirrorDoor)}
+        ${stepper('innerMirror', '도어 안쪽 거울 (300×1500)', PRICE.innerMirror)}
         ${stepper('side', '측판 (벽이 없는 쪽 마감)', PRICE.sidePanel)}
+      </div>
+      <div class="mp-field" style="margin-top:14px"><label>내부 구성 추가 (정해진 구성 외에 더 넣고 싶을 때)</label>
+        ${stepper('longShelf', '긴 선반 추가', PRICE.longShelf)}
+        ${stepper('shortShelf', '짧은 선반 추가', PRICE.shortShelf)}
+        ${stepper('addBig', '대서랍 추가', PRICE.bigDrawer)}
+        ${stepper('addSmall', '소서랍 추가', PRICE.smallDrawer)}
+      </div>
+      <div class="mp-field" style="margin-top:14px"><label>서비스</label>
         ${toggleRow('demolition', '기존장 철거 및 내림', PRICE.demolition)}
-        ${toggleRow('visit', '방문설계서비스', PRICE.visitDesign)}
+        ${toggleRow('visit', '방문실측서비스', PRICE.visitMeasure)}
+        ${toggleRow('d3', '3D도면서비스', PRICE.design3d)}
       </div>`;
   }
   optCard.addEventListener('click', e => {
     const c = e.target.closest('.mp-chip');
-    if (c) { state[c.dataset.g] = c.dataset.v; renderOptions(); refresh(); return; }
+    if (c) { state[c.dataset.g] = c.dataset.v; if (c.dataset.g === 'handle') state.hcolor = hcList(state.handle)[0] || ''; renderOptions(); refresh(); if (c.dataset.g !== 'g') redrawPreview(); return; }
     const b = e.target.closest('[data-step]');
     if (b) { const k = b.dataset.step; state[k] = Math.max(0, Math.min(20, state[k] + Number(b.dataset.d))); $('mpS_' + k).textContent = state[k]; refresh(); }
   });
   optCard.addEventListener('change', e => {
     if (e.target.id === 'mpT_demolition') state.demolition = e.target.checked;
     if (e.target.id === 'mpT_visit') state.visit = e.target.checked;
+    if (e.target.id === 'mpT_d3') state.d3 = e.target.checked;
     refresh();
   });
+
+  // ---------- 미리보기 보정 (파란 점선 숨김 · 닫힌 도어에 색 입히기) ----------
+  // 스마트바: 도어 사이에 세로로 들어가는 알루미늄 바 (큰장=두 문 사이, 작은장=문 오른쪽 끝)
+  function drawSmartBar(isBig, x, y, w, h) {
+    const ctx = $('previewCanvas').getContext('2d');
+    const mm = w / (isBig ? 900 : 450);
+    const bw = Math.max(3, 18 * mm);
+    const bx = isBig ? x + w / 2 - bw / 2 : x + w - bw;
+    const g = ctx.createLinearGradient(bx, 0, bx + bw, 0);
+    const stops = autoTone() === '그레이' ? ['#77787a', '#b4b5b6', '#9a9b9c', '#6c6d6f'] : ['#cfcfcc', '#ffffff', '#f1f1ef', '#c4c4c1'];
+    [0, .35, .6, 1].forEach((o, i) => g.addColorStop(o, stops[i]));
+    ctx.save(); ctx.fillStyle = g; ctx.fillRect(bx, y + h * 0.01, bw, h * 0.98); ctx.restore();
+  }
+  // 레세르·르씰: 문 여는 쪽 끝, 바닥에서 약 1m 높이 (큰장=두 문 가운데 양쪽, 작은장=문 오른쪽 끝)
+  function drawHandle(isBig, x, y, w, h) {
+    if (state.handle === '스마트바') return drawSmartBar(isBig, x, y, w, h);
+    const col = autoTone() === '그레이' ? '#8b8c8e' : '#f3f3f1';
+    const ctx = $('previewCanvas').getContext('2d');
+    const mm = w / (isBig ? 900 : 450);
+    const cy = y + h * 0.55;
+    const edges = isBig ? [[x + w / 2, -1], [x + w / 2, 1]] : [[x + w, -1]]; // [모서리 x, 안쪽 방향]
+    ctx.save();
+    edges.forEach(([ex, dir]) => {
+      if (state.handle === '레세르') {
+        const len = 250 * mm, bw = Math.max(3, 22 * mm), gap = 4 * mm;
+        const bx = dir < 0 ? ex - gap - bw : ex + gap;
+        ctx.fillStyle = col; ctx.fillRect(bx, cy - len / 2, bw, len);
+        ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.fillRect(dir < 0 ? bx : bx + bw - Math.max(1, bw * .25), cy - len / 2, Math.max(1, bw * .25), len);
+      } else if (state.handle === '르씰') {
+        const r = Math.max(3, 17 * mm), cx = ex + dir * 55 * mm;
+        ctx.fillStyle = 'rgba(0,0,0,.15)'; ctx.beginPath(); ctx.arc(cx + r * .15, cy + r * .2, r, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = col; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.lineWidth = 1; ctx.stroke();
+      }
+    });
+    ctx.restore();
+  }
+  function redrawPreview() { try { if (typeof renderPreview === 'function' && currentPlan) renderPreview(); } catch (e) {} }
+  (function patchPreview() {
+    const cv = $('previewCanvas'); if (!cv || !cv.getContext) return;
+    const ctx = cv.getContext('2d'); if (!ctx || ctx.__mpPatched) return; ctx.__mpPatched = true;
+    const dash = ctx.setLineDash.bind(ctx), draw = ctx.drawImage.bind(ctx);
+    // 점선 안내선은 투명하게 그려서 안 보이게
+    ctx.setLineDash = function (a) { dash(a); if (a && a.length) ctx.strokeStyle = 'rgba(0,0,0,0)'; };
+    // 닫힌 도어 이미지 위에 선택한 색을 곱하기로 입힘
+    ctx.drawImage = function (img, ...a) {
+      draw(img, ...a);
+      try {
+        const src = (img && img.src) || '';
+        const hex = COLOR_HEX[state.color];
+        if (a.length === 4 && /\/door_[^/]*$/.test(src) && hex && state.color !== COLORS[0]) {
+          ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = hex; ctx.fillRect(a[0], a[1], a[2], a[3]); ctx.restore();
+        }
+        if (a.length === 4 && /\/door_[^/]*$/.test(src)) drawHandle(/door_big/.test(src), a[0], a[1], a[2], a[3]);
+      } catch (e) {}
+    };
+  })();
 
   // ---------- 계산 ----------
   function getPlan() {
@@ -169,9 +256,15 @@
     if (smallD) lines.push({ k: 'smallD', t: `소서랍 ${smallD}개`, a: smallD * PRICE.smallDrawer, store: '소서랍', n: smallD });
     powderUnits.forEach(x => lines.push({ k: 'powder', t: `화장대 ${x.s} (800mm)`, a: PRICE.powder[x.s] || 0, notInStore: true }));
     if (state.mirror) lines.push({ k: 'mirror', t: `거울도어 ${state.mirror}개`, a: state.mirror * PRICE.mirrorDoor, store: '거울도어', n: state.mirror });
+    if (state.innerMirror) lines.push({ k: 'innerMirror', t: `도어 안쪽 거울 300×1500 ${state.innerMirror}개`, a: state.innerMirror * PRICE.innerMirror, store: '도어 안쪽 거울', n: state.innerMirror });
+    if (state.longShelf) lines.push({ k: 'longShelf', t: `긴 선반 추가 ${state.longShelf}개`, a: state.longShelf * PRICE.longShelf, store: '긴 선반 추가', n: state.longShelf });
+    if (state.shortShelf) lines.push({ k: 'shortShelf', t: `짧은 선반 추가 ${state.shortShelf}개`, a: state.shortShelf * PRICE.shortShelf, store: '짧은 선반 추가', n: state.shortShelf });
+    if (state.addBig) lines.push({ k: 'addBig', t: `대서랍 추가 ${state.addBig}개`, a: state.addBig * PRICE.bigDrawer, store: '대서랍', n: state.addBig });
+    if (state.addSmall) lines.push({ k: 'addSmall', t: `소서랍 추가 ${state.addSmall}개`, a: state.addSmall * PRICE.smallDrawer, store: '소서랍', n: state.addSmall });
     if (state.side) lines.push({ k: 'side', t: `측판 ${state.side}개`, a: state.side * PRICE.sidePanel, store: '측판', n: state.side });
     if (state.demolition) lines.push({ k: 'demo', t: '기존장 철거 및 내림', a: PRICE.demolition, store: '기존장 철거 및 내림', n: 1 });
-    if (state.visit) lines.push({ k: 'visit', t: '방문설계서비스', a: PRICE.visitDesign, store: '방문설계서비스', n: 1 });
+    if (state.visit) lines.push({ k: 'visit', t: '방문실측서비스', a: PRICE.visitMeasure, store: '방문실측서비스', n: 1 });
+    if (state.d3) lines.push({ k: 'd3', t: '3D도면서비스', a: PRICE.design3d, store: '3D도면서비스', n: 1 });
     const total = lines.reduce((s, l) => s + l.a, 0);
     const code = buildCode(p);
     return { wall, qty, lines, total, code, surround: Math.round(p.plan.surround), units: p.units, selections: p.selections, powder: powderUnits };
@@ -195,7 +288,7 @@
   function renderPrice(r) {
     priceCard.innerHTML = `
       <div class="mp-title">견적 금액</div>
-      <div class="mp-note" style="margin:-6px 0 8px">벽 ${r.wall.toLocaleString()}mm · 좌우 서라운드 각 ${r.surround}mm · ${state.color} · ${state.handle}</div>
+      <div class="mp-note" style="margin:-6px 0 8px">벽 ${r.wall.toLocaleString()}mm · 좌우 서라운드 각 ${r.surround}mm · ${state.color} · ${esc(handleName())}</div>
       ${r.lines.map(l => `<div class="mp-row"><span>${esc(l.t)}</span><span class="n">${won(l.a)}</span></div>`).join('')}
       <div class="mp-total"><span>총 금액</span><b>${won(r.total)}</b></div>
       <div class="mp-note">• 선반·옷봉 구성과 스타일러장은 본체 가격에 포함돼요.<br>• 10cm 미만 길이는 버려요. (예: 3,650mm → 36개)<br>• <b>이 금액 그대로 시공</b>되며, 현장에서 추가금이 붙지 않아요.</div>`;
@@ -203,7 +296,8 @@
   }
 
   function storeAddons(r) {
-    return r.lines.filter(l => l.store).map(l => `${l.store} ${l.n}개`);
+    const m = new Map(); r.lines.filter(l => l.store).forEach(l => m.set(l.store, (m.get(l.store) || 0) + l.n));
+    return [...m].map(([k, n]) => `${k} ${n}개`);
   }
 
   function renderNextStore(r) {
@@ -214,7 +308,7 @@
       <ol class="mp-steps">
         <li>아래 버튼을 누르면 <b>구성 코드가 복사</b>되고 스토어로 돌아가요.</li>
         <li>옵션 첫 칸 <b>사이즈&디자인 구성</b>에 붙여넣기<div class="mp-code">${esc(r.code.mid)}</div></li>
-        <li>컬러 <b>${esc(state.color)}</b> · 손잡이 <b>${esc(state.handle)}</b> 선택</li>
+        <li>컬러 <b>${esc(state.color)}</b> · 손잡이 <b>${esc(handleName())}</b> 선택</li>
         <li>수량을 <b class="hl">${r.qty}개</b>로 맞추기</li>
         ${adds.length ? `<li>추가상품 담기: <b>${adds.map(esc).join(', ')}</b></li>` : ''}
         ${powderNote}
@@ -290,8 +384,9 @@
   const BASE = location.origin + location.pathname.replace(/[^/]*$/, '');
   function viewLink(r) {
     const q = new URLSearchParams({
-      w: r.wall, u: r.code.mid, c: COLORS.indexOf(state.color), h: HANDLES.indexOf(state.handle),
-      m: state.mirror, s: state.side, d: state.demolition ? 1 : 0, v: state.visit ? 1 : 0, view: 1,
+      w: r.wall, u: r.code.mid, c: COLORS.indexOf(state.color), h: HANDLES.indexOf(state.handle), hc: Math.max(0, hcList(state.handle).indexOf(state.hcolor)),
+      m: state.mirror, s: state.side, d: state.demolition ? 1 : 0, v: state.visit ? 1 : 0, t: state.d3 ? 1 : 0,
+      ls: state.longShelf, ss: state.shortShelf, ab: state.addBig, as: state.addSmall, im: state.innerMirror, view: 1,
     });
     return BASE + 'store.html?' + q.toString();
   }
@@ -330,8 +425,10 @@
       const ci = Number(q.get('c')), hi = Number(q.get('h'));
       if (COLORS[ci]) state.color = COLORS[ci];
       if (HANDLES[hi]) state.handle = HANDLES[hi];
+      state.hcolor = hcList(state.handle)[Number(q.get('hc')) || 0] || hcList(state.handle)[0] || '';
       state.mirror = Math.max(0, Number(q.get('m')) || 0); state.side = Math.max(0, Number(q.get('s')) || 0);
-      state.demolition = q.get('d') === '1'; state.visit = q.get('v') === '1';
+      state.demolition = q.get('d') === '1'; state.visit = q.get('v') === '1'; state.d3 = q.get('t') === '1';
+      [['longShelf','ls'],['shortShelf','ss'],['addBig','ab'],['addSmall','as'],['innerMirror','im']].forEach(([k, p]) => { state[k] = Math.max(0, Math.min(20, Number(q.get(p)) || 0)); });
       renderedOptions = false;
       const e = restore(q.get('u'), q.get('w'));
       if (!e && q.get('view') === '1') {
@@ -386,12 +483,12 @@
     L.push(`주소: ${orderForm.addr.trim()}`);
     L.push(`희망 시공일: ${orderForm.date.trim() || '상담 후 결정'}`);
     if (orderForm.memo.trim()) L.push(`요청사항: ${orderForm.memo.trim()}`);
-    L.push(`현장 사진: ${photos.length ? photos.length + '장 함께 보냄' : '없음 (채팅으로 보내드릴게요)'}`);
+    L.push(`현장 사진: ${photos.length ? photos.length + '장 (이 메시지 다음에 따로 보낼게요)' : '없음'}`);
     L.push('');
     L.push(`■ 벽 길이 ${r.wall.toLocaleString()}mm (좌우 서라운드 각 ${r.surround}mm)`);
     L.push(`■ 구성 ${r.code.full}`);
     L.push(`  ${r.units.map((u, i) => unitLabel(u, r.selections[i])).join(' / ')}`);
-    L.push(`■ 색상 ${state.color} · 손잡이 ${state.handle}`);
+    L.push(`■ 색상 ${state.color} · 손잡이 ${handleName()}`);
     L.push(`■ 구성 보기: ${viewLink(r)}`);
     L.push('');
     L.push('■ 견적');
@@ -399,6 +496,10 @@
     L.push(`= 총 금액 ${won(r.total)}`);
     L.push('');
     L.push('상담팀 확인 후 결제 안내 부탁드립니다.');
+    if (photos.length) {
+      L.push('');
+      L.push(`📷 이 메시지를 보낸 뒤, 채팅창 왼쪽 아래 [+] → [앨범]에서 현장 사진 ${photos.length}장을 보내주세요.`);
+    }
     return L.join('\n');
   }
 

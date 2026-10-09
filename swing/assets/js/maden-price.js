@@ -64,6 +64,14 @@
   .mp-consent input{margin-top:3px}
   .mp-out{width:100%;min-height:200px;font-size:13px;border:1px solid #e5e7eb;border-radius:8px;padding:10px;margin-top:10px;white-space:pre-wrap}
   .mp-err{color:#b00020;font-size:13px;margin-top:8px;min-height:1em}
+  .mp-photo{margin-top:14px;padding:14px;border:1px dashed #e5d6d3;border-radius:12px;background:#fbf6f5}
+  .mp-photo h4{margin:0 0 6px;font-size:14px;color:#3f2a2a}
+  .mp-photo ul{margin:0 0 10px;padding-left:18px;font-size:13px;color:#4b5563;line-height:1.7}
+  .mp-photo-btn{display:inline-flex;align-items:center;gap:6px;padding:10px 14px;border:1px solid #673131;color:#673131;border-radius:10px;background:#fff;font-weight:600;font-size:14px;cursor:pointer}
+  .mp-thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .mp-thumbs div{position:relative;width:72px;height:72px;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;background:#fff}
+  .mp-thumbs img{width:100%;height:100%;object-fit:cover;display:block}
+  .mp-thumbs button{position:absolute;top:2px;right:2px;width:22px;height:22px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;font-size:13px;line-height:22px;cursor:pointer;padding:0}
   `;
   const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
 
@@ -231,14 +239,28 @@
         <div class="mp-field"><label for="mpDate">희망 시공일</label><input type="text" id="mpDate" value="${esc(orderForm.date)}" placeholder="예) 11월 둘째 주"></div>
         <div class="mp-field"><label for="mpMemo">요청사항 (선택)</label><input type="text" id="mpMemo" value="${esc(orderForm.memo)}"></div>
       </div>
+      <div class="mp-photo">
+        <h4>📷 현장 사진 (추천)</h4>
+        <ul>
+          <li>장이 들어갈 <b>벽 정면</b> 전체가 나오게 1장</li>
+          <li><b>양쪽 끝</b>(벽 모서리, 몰딩, 콘센트) 각 1장</li>
+          <li><b>천장</b>(커튼박스, 스프링클러, 환기구) 1장</li>
+        </ul>
+        <label class="mp-photo-btn" for="mpFiles">사진 고르기</label>
+        <input type="file" id="mpFiles" accept="image/*" multiple hidden>
+        <span class="mp-note" id="mpFileCount" style="margin-left:8px"></span>
+        <div class="mp-thumbs" id="mpThumbs"></div>
+      </div>
       <label class="mp-consent"><input type="checkbox" id="mpAgree" ${orderForm.agree ? 'checked' : ''}>
         <span>[필수] 주문 상담을 위해 이름·연락처·주소를 수집하고 시공 완료 후 1년간 보관하는 데 동의합니다.</span></label>
       <div class="mp-err" id="mpErr"></div>
       <button type="button" class="mp-cta kakao" id="mpSend">주문서 복사하고 카카오톡으로 보내기</button>
-      <div class="mp-note">버튼을 누르면 주문서가 복사되고 우드팩커 카카오톡 채널이 열려요. <b>채팅창에 붙여넣고 보내주시면</b> 상담팀이 확인 후 결제를 안내드려요.</div>
+      <div class="mp-note" id="mpSendNote">버튼을 누르면 주문서가 복사되고 우드팩커 카카오톡 채널이 열려요. <b>채팅창에 붙여넣고 보내주시면</b> 상담팀이 확인 후 결제를 안내드려요. 사진은 채팅창의 <b>+ 버튼</b>으로 함께 보내주세요.</div>
       <textarea class="mp-out" id="mpOut" readonly hidden></textarea>`;
     ['Name', 'Phone', 'Addr', 'Date', 'Memo'].forEach(k => { $('mp' + k).oninput = e => { orderForm[k.toLowerCase()] = e.target.value; }; });
     $('mpAgree').onchange = e => { orderForm.agree = e.target.checked; };
+    $('mpFiles').onchange = e => { photos.push(...Array.from(e.target.files || []).filter(f => f.type.startsWith('image/'))); photos.splice(10); e.target.value = ''; renderThumbs(); };
+    renderThumbs();
     $('mpSend').onclick = async () => {
       const err = $('mpErr');
       if (!orderForm.name.trim() || !orderForm.phone.trim() || !orderForm.addr.trim()) { err.textContent = '이름, 연락처, 설치 주소를 입력해주세요.'; return; }
@@ -246,10 +268,105 @@
       err.textContent = '';
       const text = orderText(compute());
       const out = $('mpOut'); out.value = text; out.hidden = false;
+      // 휴대폰: 사진 + 주문서를 공유 창으로 한 번에 보내기 (카카오톡 선택 → 우드팩커 채팅방)
+      if (photos.length && navigator.canShare && navigator.canShare({ files: photos })) {
+        try {
+          await navigator.share({ text, files: photos });
+          copyText(text);
+          showToast('보내셨다면 접수 완료예요. 상담팀이 확인 후 연락드려요.');
+          return;
+        } catch (shareErr) {
+          if (shareErr && shareErr.name === 'AbortError') { showToast('보내기를 취소했어요. 다시 눌러주세요.'); return; }
+        }
+      }
       const ok = await copyText(text);
       showToast(ok ? '주문서를 복사했어요. 카카오톡 채팅창에 붙여넣어 보내주세요.' : '자동 복사가 안 됐어요. 아래 주문서를 길게 눌러 복사해주세요.');
       setTimeout(() => { const w = window.open(KAKAO_URL, '_blank'); if (!w) location.href = KAKAO_URL; }, 700);
     };
+  }
+
+  // ---------- 구성 링크 · 불러오기 ----------
+  const BASE = location.origin + location.pathname.replace(/[^/]*$/, '');
+  function viewLink(r) {
+    const q = new URLSearchParams({
+      w: r.wall, u: r.code.mid, c: COLORS.indexOf(state.color), h: HANDLES.indexOf(state.handle),
+      m: state.mirror, s: state.side, d: state.demolition ? 1 : 0, v: state.visit ? 1 : 0, view: 1,
+    });
+    return BASE + 'store.html?' + q.toString();
+  }
+
+  // 코드(예: 7.5L-9H-9A-4.5I-8PB-7.5R 또는 9H-9A-4.5I)로 구성을 복원
+  function restore(code, wallMm) {
+    const toks = String(code).trim().toUpperCase().replace(/\s+/g, '').split('-').filter(Boolean);
+    let surround = null; const us = [], sel = [];
+    for (const t of toks) {
+      const m = t.match(/^(\d+(?:\.\d+)?)([A-Z]+\d?)$/);
+      if (!m) return '코드 형식을 읽지 못했어요: ' + t;
+      const w = Math.round(parseFloat(m[1]) * 100), k = m[2];
+      if (k === 'L' || k === 'R') { surround = w / 10; continue; }
+      if (k === 'ST3' || k === 'ST5') { us.push({ type: 'styler', w, code: k }); sel.push(k); continue; }
+      if (k === 'PA' || k === 'PB' || k === 'PC') { us.push({ type: 'powder', w, code: k }); sel.push(k); continue; }
+      us.push({ type: w >= 800 ? 'big' : 'small', w, code: '' }); sel.push(k);
+    }
+    if (!us.length) return '구성이 비어 있어요.';
+    const used = us.reduce((a, u) => a + u.w, 0);
+    let wall = Number(wallMm) || 0;
+    if (!wall) wall = surround != null ? Math.round(used + surround * 2) : used;
+    if (wall < used) return `벽 길이(${wall}mm)가 구성 합계(${used}mm)보다 짧아요.`;
+    const leftover = wall - used;
+    $('wall').value = wall;
+    units = us; selections = sel;
+    currentPlan = { set: '불러온 구성', big: 0, small: 0, bc: us.filter(u => u.type === 'big').length, sc: us.filter(u => u.type === 'small').length,
+      used, leftover, surround: leftover / 2, doors: 0, priority: 0, fixed: [] };
+    designCard.style.display = 'block';
+    renderSlots(); updateCompact(); renderPreview();
+    return '';
+  }
+
+  function applyParams() {
+    const q = new URLSearchParams(location.search);
+    if (q.get('u')) {
+      const ci = Number(q.get('c')), hi = Number(q.get('h'));
+      if (COLORS[ci]) state.color = COLORS[ci];
+      if (HANDLES[hi]) state.handle = HANDLES[hi];
+      state.mirror = Math.max(0, Number(q.get('m')) || 0); state.side = Math.max(0, Number(q.get('s')) || 0);
+      state.demolition = q.get('d') === '1'; state.visit = q.get('v') === '1';
+      renderedOptions = false;
+      const e = restore(q.get('u'), q.get('w'));
+      if (!e && q.get('view') === '1') {
+        const tag = document.createElement('div'); tag.className = 'mp-card';
+        tag.style.cssText = 'background:#673131;color:#fff;font-weight:700';
+        tag.textContent = '고객이 보낸 구성을 불러왔어요. 아래에서 구성·미리보기·금액을 확인하세요.';
+        designCard.before(tag);
+        setTimeout(() => tag.scrollIntoView({ behavior: 'smooth' }), 300);
+      }
+    }
+    if (q.get('staff') === '1') {
+      const box = document.createElement('div'); box.className = 'mp-card';
+      box.innerHTML = `<div class="mp-title">직원용 · 구성 코드로 불러오기</div>
+        <div class="mp-grid"><div class="mp-field"><label for="mpLoadCode">구성 코드</label><input type="text" id="mpLoadCode" placeholder="예) 7.5L-9H-9A-9A-8PB-7.5R 또는 9H-9A-9A"></div>
+        <div class="mp-field"><label for="mpLoadWall">벽 길이 (mm, 코드에 L·R이 없을 때)</label><input type="number" id="mpLoadWall" placeholder="예) 3650"></div></div>
+        <button type="button" class="mp-cta" id="mpLoadBtn" style="margin-top:12px">불러오기</button><div class="mp-err" id="mpLoadErr"></div>`;
+      designCard.before(box);
+      $('mpLoadBtn').onclick = () => { $('mpLoadErr').textContent = restore($('mpLoadCode').value, $('mpLoadWall').value); };
+    }
+  }
+
+  const photos = [];
+  function renderThumbs() {
+    const box = $('mpThumbs'); if (!box) return;
+    box.innerHTML = '';
+    photos.forEach((f, i) => {
+      const d = document.createElement('div');
+      const img = document.createElement('img'); img.alt = '현장 사진 ' + (i + 1); img.src = URL.createObjectURL(f);
+      img.onload = () => URL.revokeObjectURL(img.src);
+      const x = document.createElement('button'); x.type = 'button'; x.textContent = '×'; x.setAttribute('aria-label', '사진 빼기');
+      x.onclick = () => { photos.splice(i, 1); renderThumbs(); };
+      d.append(img, x); box.appendChild(d);
+    });
+    $('mpFileCount').textContent = photos.length ? `${photos.length}장 선택됨 (최대 10장)` : '';
+    const btn = $('mpSend');
+    if (btn) btn.textContent = (photos.length && navigator.canShare && navigator.canShare({ files: photos })) ? '사진과 주문서 카카오톡으로 보내기' : '주문서 복사하고 카카오톡으로 보내기';
   }
 
   function orderNo() {
@@ -266,11 +383,13 @@
     L.push(`주소: ${orderForm.addr.trim()}`);
     L.push(`희망 시공일: ${orderForm.date.trim() || '상담 후 결정'}`);
     if (orderForm.memo.trim()) L.push(`요청사항: ${orderForm.memo.trim()}`);
+    L.push(`현장 사진: ${photos.length ? photos.length + '장 함께 보냄' : '없음 (채팅으로 보내드릴게요)'}`);
     L.push('');
     L.push(`■ 벽 길이 ${r.wall.toLocaleString()}mm (좌우 서라운드 각 ${r.surround}mm)`);
     L.push(`■ 구성 ${r.code.full}`);
     L.push(`  ${r.units.map((u, i) => unitLabel(u, r.selections[i])).join(' / ')}`);
     L.push(`■ 색상 ${state.color} · 손잡이 ${state.handle}`);
+    L.push(`■ 구성 보기: ${viewLink(r)}`);
     L.push('');
     L.push('■ 견적');
     r.lines.forEach(l => L.push(`- ${l.t}: ${won(l.a)}`));
@@ -299,6 +418,7 @@
     if (!on) return;
     if (!renderedOptions) { renderOptions(); renderedOptions = true; }
     renderPrice(r);
+    if (new URLSearchParams(location.search).get('view') === '1') { nextCard.style.display = 'none'; return; }
     if (MODE === 'order') { if (!$('mpSend')) renderNextOrder(r); }
     else renderNextStore(r);
   }
@@ -312,5 +432,6 @@
   const calcBtn = $('calcBtn');
   if (calcBtn) calcBtn.addEventListener('click', () => setTimeout(refresh, 0));
   window.MADEN_PRICE = PRICE; // 확인용
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applyParams); else applyParams();
   window.MADEN_SET_MODE = m => { MODE = m === 'order' ? 'order' : 'store'; nextCard.innerHTML = ''; refresh(); }; // 확인용
 })();

@@ -20,7 +20,7 @@
   const COLORS = ['스완화이트', '웜화이트', '미스티그레이', '실키그레이', '콘크리트화이트'];
   const HANDLES = ['푸쉬', '스마트바', '레세르', '르씰'];
   const STORE_URL = 'https://smartstore.naver.com/woodpecker77/products/13625382270';
-  const KAKAO_URL = 'http://pf.kakao.com/_xjJTLC/chat';
+  const KAKAO_URL = 'https://pf.kakao.com/_xjJTLC/chat';
   let MODE = (window.MADEN_MODE === 'order') ? 'order' : 'store';
 
   const won = n => Math.round(n).toLocaleString('ko-KR') + '원';
@@ -254,8 +254,15 @@
       <label class="mp-consent"><input type="checkbox" id="mpAgree" ${orderForm.agree ? 'checked' : ''}>
         <span>[필수] 주문 상담을 위해 이름·연락처·주소를 수집하고 시공 완료 후 1년간 보관하는 데 동의합니다.</span></label>
       <div class="mp-err" id="mpErr"></div>
-      <button type="button" class="mp-cta kakao" id="mpSend">주문서 복사하고 카카오톡으로 보내기</button>
-      <div class="mp-note" id="mpSendNote">버튼을 누르면 주문서가 복사되고 우드팩커 카카오톡 채널이 열려요. <b>채팅창에 붙여넣고 보내주시면</b> 상담팀이 확인 후 결제를 안내드려요. 사진은 채팅창의 <b>+ 버튼</b>으로 함께 보내주세요.</div>
+      <button type="button" class="mp-cta kakao" id="mpSend">① 주문서 복사하고 카카오톡 채널 열기</button>
+      <div class="mp-note" id="mpSendNote"><b>① 주문서 보내기</b> 버튼을 누르면 주문서가 복사되고 <b>우드팩커 카카오톡 채널</b>이 열려요. 채팅창에 <b>붙여넣고 보내주세요.</b></div>
+      <div id="mpStep2" class="mp-photo" hidden>
+        <h4>② 현장 사진 보내기</h4>
+        <div class="mp-note" style="margin-top:0">카카오톡 채팅방에서 <b>+ 버튼 → 앨범</b>으로 방금 고른 사진을 보내주세요.</div>
+        <button type="button" class="mp-photo-btn" id="mpSharePhotos" style="margin-top:10px" hidden>고른 사진 카카오톡으로 공유하기</button>
+        <div class="mp-note" id="mpShareHint" hidden>공유 창에서 <b>카카오톡 → 우드팩커 채팅방</b>을 골라주세요.</div>
+        <div class="mp-note">보내주시면 상담팀이 확인 후 결제를 안내드려요. 😊</div>
+      </div>
       <textarea class="mp-out" id="mpOut" readonly hidden></textarea>`;
     ['Name', 'Phone', 'Addr', 'Date', 'Memo'].forEach(k => { $('mp' + k).oninput = e => { orderForm[k.toLowerCase()] = e.target.value; }; });
     $('mpAgree').onchange = e => { orderForm.agree = e.target.checked; };
@@ -268,20 +275,14 @@
       err.textContent = '';
       const text = orderText(compute());
       const out = $('mpOut'); out.value = text; out.hidden = false;
-      // 휴대폰: 사진 + 주문서를 공유 창으로 한 번에 보내기 (카카오톡 선택 → 우드팩커 채팅방)
-      if (photos.length && navigator.canShare && navigator.canShare({ files: photos })) {
-        try {
-          await navigator.share({ text, files: photos });
-          copyText(text);
-          showToast('보내셨다면 접수 완료예요. 상담팀이 확인 후 연락드려요.');
-          return;
-        } catch (shareErr) {
-          if (shareErr && shareErr.name === 'AbortError') { showToast('보내기를 취소했어요. 다시 눌러주세요.'); return; }
-        }
-      }
       const ok = await copyText(text);
       showToast(ok ? '주문서를 복사했어요. 카카오톡 채팅창에 붙여넣어 보내주세요.' : '자동 복사가 안 됐어요. 아래 주문서를 길게 눌러 복사해주세요.');
+      $('mpStep2').hidden = false;
       setTimeout(() => { const w = window.open(KAKAO_URL, '_blank'); if (!w) location.href = KAKAO_URL; }, 700);
+    };
+    $('mpSharePhotos').onclick = async () => {
+      try { await navigator.share({ files: photos }); }
+      catch (e) { if (!(e && e.name === 'AbortError')) showToast('사진 공유가 안 돼요. 카카오톡 채팅방의 + 버튼으로 보내주세요.'); }
     };
   }
 
@@ -365,8 +366,10 @@
       d.append(img, x); box.appendChild(d);
     });
     $('mpFileCount').textContent = photos.length ? `${photos.length}장 선택됨 (최대 10장)` : '';
-    const btn = $('mpSend');
-    if (btn) btn.textContent = (photos.length && navigator.canShare && navigator.canShare({ files: photos })) ? '사진과 주문서 카카오톡으로 보내기' : '주문서 복사하고 카카오톡으로 보내기';
+    const canShare = !!(photos.length && navigator.canShare && navigator.canShare({ files: photos }));
+    const sb = $('mpSharePhotos'), sh = $('mpShareHint');
+    if (sb) sb.hidden = !canShare;
+    if (sh) sh.hidden = !canShare;
   }
 
   function orderNo() {

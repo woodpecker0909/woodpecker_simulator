@@ -229,7 +229,7 @@
           let fill = hex;
           if (state.color === '콘크리트화이트' && concreteImg.complete && concreteImg.naturalWidth) {
             const pat = ctx.createPattern(concreteImg, 'repeat');
-            const sc = (a[2] / (/door_big/.test(src) ? 900 : 450)) * 600 / concreteImg.naturalWidth; // 견본 폭 ≈ 600mm
+            const sc = Math.max(a[2] / concreteImg.naturalWidth, a[3] / concreteImg.naturalHeight); // 질감 한 장으로 문 전체를 덮어 이음새 없앰
             if (pat && pat.setTransform) { pat.setTransform(new DOMMatrix().translate(a[0], a[1]).scale(sc)); fill = pat; }
           }
           ctx.fillStyle = fill; ctx.fillRect(a[0], a[1], a[2], a[3]); ctx.restore();

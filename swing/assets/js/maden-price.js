@@ -197,7 +197,7 @@
     ctx.save();
     edges.forEach(([ex, dir]) => {
       if (state.handle === '레세르') {
-        const len = 250 * mm, bw = Math.max(3, 22 * mm), gap = 4 * mm;
+        const len = 150 * mm, bw = Math.max(3, 22 * mm), gap = 4 * mm;
         const bx = dir < 0 ? ex - gap - bw : ex + gap;
         ctx.fillStyle = col; ctx.fillRect(bx, cy - len / 2, bw, len);
         ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.fillRect(dir < 0 ? bx : bx + bw - Math.max(1, bw * .25), cy - len / 2, Math.max(1, bw * .25), len);

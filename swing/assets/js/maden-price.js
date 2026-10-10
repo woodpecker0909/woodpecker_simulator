@@ -163,6 +163,104 @@
     st.addEventListener('change', upd); pw.addEventListener('change', upd); upd();
   })();
 
+  // ---------- 추천 조합 (작은장 최대 1개 · 1·2·3안은 서로 다른 큰장 사이즈) ----------
+  (function madenPlanner() {
+    if (typeof SETS === 'undefined') return;
+    const MIN_S = (typeof MIN_SURROUND !== 'undefined') ? MIN_SURROUND : 40;
+    const TIE = (typeof LEFTOVER_TIE !== 'undefined') ? LEFTOVER_TIE : 20;
+    let plans = [];
+
+    function plan() {
+      const summary = $('summary');
+      const wall = parseInt($('wall').value, 10);
+      const pairRequired = $('pairRequired')?.checked || false;
+      const onlyOdd = $('onlyOddDoors')?.checked || false;
+      summary.innerHTML = ''; $('designCard').style.display = 'none';
+      if (!wall || wall < 1000) { summary.innerHTML = "<div style='color:#b00020'>⚠️ 1000mm 이상 입력</div>"; return; }
+      const sets = SETS.filter(x => $(x.id) && $(x.id).checked);
+      if (!sets.length) { summary.innerHTML = "<div style='color:#b00020'>⚠️ 최소 1개 세트를 선택</div>"; return; }
+      const fixed = [];
+      if ($('stylerOn').checked) { const w = parseInt($('stylerType').value, 10); fixed.push({ type: 'styler', w, code: w === 450 ? 'ST3' : 'ST5' }); }
+      if ($('powderOn').checked) fixed.push({ type: 'powder', w: 800, code: $('powderDesign').value });
+      const fixedUsed = fixed.reduce((a, u) => a + u.w, 0);
+      if (fixedUsed > wall) { summary.innerHTML = "<div style='color:#b00020'>⚠️ 고정 통의 총 폭이 벽 길이를 초과합니다.</div>"; return; }
+
+      const bigs = sets.map(x => ({ w: x.big, small: x.small, pr: x.priority })).sort((a, b) => b.w - a.w);
+      // 큰장 너비 조합: 한 가지, 또는 이웃한 두 가지
+      const groups = [];
+      bigs.forEach(b => groups.push([b])); // 한 조합 안에서는 큰장 사이즈 동일
+      const rows = [], seen = new Set();
+      groups.forEach(g => {
+        for (let n1 = 0; n1 <= 14; n1++) for (let n2 = 0; n2 <= (g[1] ? 14 : 0); n2++) {
+          if (g[1] && (n1 === 0 || n2 === 0)) continue; // 섞을 땐 둘 다 1개 이상
+          const bigList = [...Array(n1).fill(g[0].w), ...(g[1] ? Array(n2).fill(g[1].w) : [])];
+          const bc = bigList.length;
+          // 작은장: 없음, 또는 쓰인 큰장의 절반 너비 1개
+          const smallOpts = [0, ...new Set(g.filter((x, k) => (k === 0 ? n1 : n2) > 0).map(x => x.small))];
+          smallOpts.forEach(sw => {
+            const sc = sw ? 1 : 0;
+            if (bc === 0 && sc === 0 && !fixed.length) return;
+            if (pairRequired && (bc === 0 || sc === 0)) return;
+            const used = fixedUsed + bigList.reduce((a, w) => a + w, 0) + sw;
+            if (used > wall) return;
+            const leftover = wall - used, surround = leftover / 2;
+            if (surround < MIN_S || surround > 100) return; // 서라운드 한쪽 40~100mm
+            const doors = 2 * bc + sc + fixed.length;
+            if (onlyOdd && doors % 2 === 0) return;
+            const key = bigList.join(',') + '|' + sw;
+            if (seen.has(key)) return; seen.add(key);
+            const mixed = new Set(bigList).size > 1 ? 1 : 0;
+            const pr = Math.min(...g.map(x => x.pr));
+            rows.push({ bigList, small: sw, bc, sc, used, leftover, surround, doors, mixed, priority: pr, fixed: JSON.parse(JSON.stringify(fixed)) });
+          });
+        }
+      });
+      if (!rows.length) { summary.innerHTML = "<div class='text-sm text-red-500 mt-5'>이 벽 길이에 맞는 메이든 조합이 없어요. 우드팩커 맞춤 붙박이장으로 상담해 주세요.</div>"; return; }
+      rows.sort((a, b) => {
+        if (Math.abs(a.leftover - b.leftover) > TIE) return a.leftover - b.leftover;
+        if (a.mixed !== b.mixed) return a.mixed - b.mixed;     // 같은 너비만 쓰는 쪽 먼저
+        if (a.sc !== b.sc) return a.sc - b.sc;                 // 작은장 없는 쪽 먼저
+        if (a.priority !== b.priority) return a.priority - b.priority;
+        if (a.leftover !== b.leftover) return a.leftover - b.leftover;
+        return a.doors - b.doors;
+      });
+      // 큰장 사이즈별로 가장 좋은 조합 1개씩만 남겨서, 1·2·3안이 서로 다른 사이즈가 되게
+      const bestBy = new Map();
+      rows.forEach(r => { const k = r.bigList[0] || 0; if (!bestBy.has(k)) bestBy.set(k, r); });
+      plans = [...bestBy.values()].slice(0, 3);
+      const label = r => {
+        const cnt = {}; r.bigList.forEach(w => cnt[w] = (cnt[w] || 0) + 1);
+        const b = Object.keys(cnt).sort((x, y) => y - x).map(w => `${w}×${cnt[w]}`).join(' + ');
+        return `큰장 ${b || '없음'}${r.small ? ` · 작은장 ${r.small}×1` : ''}${r.fixed.length ? ` · 고정통 ${r.fixed.length}개` : ''}`;
+      };
+      summary.innerHTML = `<div class='text-purple-500 text-lg'><b>✔️ 추천 조합 ${plans.length}가지</b></div>` +
+        plans.map((r, i) => `<div class='summary-line mt-5 text-sm leading-6'>
+          <button class='btn btn-outline btn-primary mr-3' style='border-width:2px !important;' onclick='MADEN_CHOOSE(${i})'>${i + 1}안 선택</button>
+          ${label(r)} · 도어 ${r.doors}개 · 서라운드 ${Math.round(r.surround)}mm/측 (남는폭 ${r.leftover}mm)</div>`).join('');
+      plans.forEach(r => r.set = label(r));
+    }
+
+    window.MADEN_CHOOSE = function (i) {
+      const r = plans[i]; if (!r) return;
+      currentPlan = r;
+      const us = [];
+      [...r.bigList].sort((a, b) => b - a).forEach(w => us.push({ type: 'big', w, code: '' }));
+      if (r.small) us.push({ type: 'small', w: r.small, code: '' });
+      r.fixed.forEach(f => us.push({ ...f }));
+      units = us;
+      selections = us.map(u => (u.type === 'styler' || u.type === 'powder') ? u.code : 'A');
+      renderSlots(); $('designCard').style.display = 'block';
+      updateCompact(); renderPreview();
+      window.scrollTo({ top: $('designCard').offsetTop - 10, behavior: 'smooth' });
+    };
+
+    // 기존 계산 버튼·엔터 대신 새 추천 방식 사용
+    const btn = $('calcBtn');
+    if (btn) btn.addEventListener('click', e => { e.stopImmediatePropagation(); try { plan(); } catch (err) { console.error(err); } setTimeout(refresh, 0); }, true);
+    const wl = $('wall');
+    if (wl) wl.addEventListener('keydown', e => { if (e.key === 'Enter') { e.stopImmediatePropagation(); plan(); setTimeout(refresh, 0); } }, true);
+  })();
+
   // ---------- 상태 ----------
   const state = {
     color: COLORS[0], handle: HANDLES[0], hcolor: '',

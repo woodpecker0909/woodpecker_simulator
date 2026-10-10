@@ -122,6 +122,7 @@
         <li><b>너비</b> : 벽에서 벽까지 재주세요. 되도록 정확하게 재주시고, 남는 오차는 <b>서라운드로 마감</b>해 드려요.<br>벽은 생각보다 반듯하지 않아요. <b>위·가운데·아래 세 군데</b>를 재서 <b>가장 작은 값</b>을 적어주세요.<br>대부분 벽에서 벽까지 장을 짜시지만, <b>커튼박스를 빼고</b> 장을 짜고 싶으시면 커튼박스를 뺀 너비를 재주시고 아래 추가 옵션에서 <b>측판(EP) 1장</b>을 넣어주세요.</li>
         <li><b>깊이</b> : 장이 들어갈 자리의 <b>양쪽 벽이 600mm 이상</b>이면 설치할 수 있어요.</li>
         <li><b>천고</b> (바닥~천장 높이) : <b>2300mm ~ 2400mm</b> 사이면 메이든으로 설치할 수 있어요. 2300mm 미만이거나 2400mm를 넘으면 <b>우드팩커 맞춤 붙박이장</b>으로 주문해 주세요.</li>
+        <li><b>콘센트</b> : 스타일러장·화장대를 넣으시려면 <b>장으로 가려지는 자리에 콘센트</b>가 있어야 전선 노출 없이 설치할 수 있어요. 스타일러장·화장대를 넣지 않으시면 장이 들어갈 벽의 콘센트는 <b>장으로 가려져요.</b></li>
         <li><b>천장 확인 ①</b> : 벽에서 <b>깊이 600mm 안쪽</b>(장이 들어갈 자리) 천장에 <b>조명·스프링클러·환기구</b> 등 걸리는 부분이 있으면 설치가 어려워요.</li>
         <li><b>천장 확인 ②</b> : 벽에서 <b>1100mm 안쪽</b>(도어가 열리는 범위) 천장에 <b>5cm 넘게 튀어나온 구조물</b>이 있으면 설치가 어려워요.</li>
       </ul>
@@ -147,6 +148,19 @@
     const sel = $('powderDesign'); if (!sel) return;
     [...sel.options].forEach(o => { if (POWDER_NAME[o.value]) o.textContent = `${o.value} · ${POWDER_NAME[o.value]}`; });
     sel.classList.remove('w-24'); sel.style.width = 'auto';
+  })();
+
+  // 스타일러장·화장대 콘센트 안내 (둘 중 하나라도 체크하면 보임)
+  (function outletNote() {
+    const st = $('stylerOn'), pw = $('powderOn'); if (!st || !pw) return;
+    const n = document.createElement('div'); n.className = 'mp-note';
+    n.style.cssText = 'margin-top:8px';
+    const row = pw.closest('.summary-line') || pw.parentElement; row.appendChild(n);
+    const upd = () => {
+      if (st.checked || pw.checked) { n.style.color = '#b45309'; n.innerHTML = '⚠️ 스타일러장·화장대는 <b>장으로 가려지는 자리에 콘센트가 있어야</b> 전선 노출 없이 설치할 수 있어요.'; }
+      else { n.style.color = '#6b7280'; n.innerHTML = '※ 장이 들어갈 벽에 콘센트가 있으면 <b>장으로 가려져요.</b>'; }
+    };
+    st.addEventListener('change', upd); pw.addEventListener('change', upd); upd();
   })();
 
   // ---------- 상태 ----------
@@ -401,6 +415,7 @@
           <li><b>양쪽 끝</b>(벽 모서리, 몰딩, 콘센트) 각 1장</li>
           <li><b>천장</b>(커튼박스, 스프링클러, 환기구) 1장</li>
         </ul>
+        <div class="mp-note" style="margin:0 0 10px;color:#b45309">⚠️ 사진은 주문서와 함께 자동으로 가지 않아요. <b>주문서를 보내신 뒤 카카오톡 채팅방에서 사진을 따로 보내주세요.</b></div>
         <label class="mp-photo-btn" for="mpFiles">사진 고르기</label>
         <input type="file" id="mpFiles" accept="image/*" multiple hidden>
         <span class="mp-note" id="mpFileCount" style="margin-left:8px"></span>

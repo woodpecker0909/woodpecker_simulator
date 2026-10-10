@@ -90,6 +90,10 @@
   .mp-thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
   .mp-thumbs div{position:relative;width:72px;height:72px;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;background:#fff}
   .mp-thumbs img{width:100%;height:100%;object-fit:cover;display:block}
+  .mp-guide{margin-top:10px;border:1px solid #f0dcd8;border-radius:10px;background:#fbf6f5;padding:10px 12px;font-size:13px;color:#374151;line-height:1.7}
+  .mp-guide summary{cursor:pointer;font-weight:700;color:#673131}
+  .mp-guide ul{margin:8px 0 0;padding-left:18px}
+  .mp-guide li{margin-bottom:6px}
   .mp-thumbs button{position:absolute;top:2px;right:2px;width:22px;height:22px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;font-size:13px;line-height:22px;cursor:pointer;padding:0}
   `;
   const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
@@ -100,6 +104,23 @@
   // 2) 예전 장바구니 안내(통 단위) 제거
   const seq = $('seqCompact');
   if (seq) { const wrap = seq.parentElement; if (wrap) wrap.style.display = 'none'; }
+
+  // 셀프 실측 안내 (벽 길이 입력칸 바로 아래)
+  (function addGuide() {
+    const w = $('wall'); if (!w || !w.parentElement) return;
+    const d = document.createElement('details'); d.className = 'mp-guide';
+    d.innerHTML = `<summary>📏 셀프 실측 방법 (꼭 읽어주세요)</summary>
+      <div style="margin-top:6px">셀프 실측은 <b>너비 · 깊이 · 천고</b> 세 가지만 재주시면 돼요.</div>
+      <ul>
+        <li><b>너비</b> : 벽에서 벽까지 재주세요. 되도록 정확하게 재주시고, 남는 오차는 <b>서라운드로 마감</b>해 드려요.</li>
+        <li><b>깊이</b> : 장이 들어갈 자리의 <b>양쪽 벽이 600mm 이상</b>이면 설치할 수 있어요.</li>
+        <li><b>천고</b> (바닥~천장 높이) : <b>2300mm ~ 2400mm</b> 사이면 메이든으로 설치할 수 있어요. 2300mm 미만이거나 2400mm를 넘으면 <b>우드팩커 맞춤 붙박이장</b>으로 주문해 주세요.</li>
+        <li><b>천장 확인 ①</b> : 벽에서 <b>600mm 안쪽</b>(장이 들어갈 자리) 천장에 커튼박스·몰딩·조명 등 <b>걸리는 부분이 있으면 설치가 어려워요.</b></li>
+        <li><b>천장 확인 ②</b> : 벽에서 <b>1100mm 안쪽</b>(도어가 열리는 범위) 천장에 <b>5cm 넘게 튀어나온 구조물</b>이 있으면 설치가 어려워요.</li>
+      </ul>
+      <div style="margin-top:4px">측정이 어려우시면 아래 옵션에서 <b>방문실측서비스</b>를 신청해 주세요.</div>`;
+    w.parentElement.appendChild(d);
+  })();
 
   // ---------- 상태 ----------
   const state = {

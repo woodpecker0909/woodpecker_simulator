@@ -231,7 +231,7 @@
       const label = r => {
         const cnt = {}; r.bigList.forEach(w => cnt[w] = (cnt[w] || 0) + 1);
         const b = Object.keys(cnt).sort((x, y) => y - x).map(w => `${w}×${cnt[w]}`).join(' + ');
-        return `큰장 ${b || '없음'}${r.small ? ` · 작은장 ${r.small}×1` : ''}${r.fixed.length ? ` · 고정통 ${r.fixed.length}개` : ''}`;
+        return `큰장 ${b || '없음'}${r.small ? ` · 작은장 ${r.small}×1` : ''}${r.fixed.map(f => f.type === 'powder' ? ` · 화장대 ${f.code}` : ` · 스타일러장 ${f.code === 'ST3' ? '450' : '600'}`).join('')}`;
       };
       summary.innerHTML = `<div class='text-purple-500 text-lg'><b>✔️ 추천 조합 ${plans.length}가지</b></div>` +
         plans.map((r, i) => `<div class='summary-line mt-5 text-sm leading-6'>

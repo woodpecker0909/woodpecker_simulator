@@ -114,13 +114,19 @@
     d.innerHTML = `<summary>📏 셀프 실측 방법 (꼭 읽어주세요)</summary>
       <div style="margin-top:6px">셀프 실측은 <b>너비 · 깊이 · 천고</b> 세 가지만 재주시면 돼요.</div>
       <ul>
-        <li><b>너비</b> : 벽에서 벽까지 재주세요. 되도록 정확하게 재주시고, 남는 오차는 <b>서라운드로 마감</b>해 드려요.<br>대부분 벽에서 벽까지 장을 짜시지만, <b>커튼박스를 빼고</b> 장을 짜고 싶으시면 커튼박스를 뺀 너비를 재주시고 아래 추가 옵션에서 <b>측판(EP) 1장</b>을 넣어주세요.</li>
+        <li><b>너비</b> : 벽에서 벽까지 재주세요. 되도록 정확하게 재주시고, 남는 오차는 <b>서라운드로 마감</b>해 드려요.<br>벽은 생각보다 반듯하지 않아요. <b>위·가운데·아래 세 군데</b>를 재서 <b>가장 작은 값</b>을 적어주세요.<br>대부분 벽에서 벽까지 장을 짜시지만, <b>커튼박스를 빼고</b> 장을 짜고 싶으시면 커튼박스를 뺀 너비를 재주시고 아래 추가 옵션에서 <b>측판(EP) 1장</b>을 넣어주세요.</li>
         <li><b>깊이</b> : 장이 들어갈 자리의 <b>양쪽 벽이 600mm 이상</b>이면 설치할 수 있어요.</li>
         <li><b>천고</b> (바닥~천장 높이) : <b>2300mm ~ 2400mm</b> 사이면 메이든으로 설치할 수 있어요. 2300mm 미만이거나 2400mm를 넘으면 <b>우드팩커 맞춤 붙박이장</b>으로 주문해 주세요.</li>
         <li><b>천장 확인 ①</b> : 벽에서 <b>깊이 600mm 안쪽</b>(장이 들어갈 자리) 천장에 <b>조명·스프링클러·환기구</b> 등 걸리는 부분이 있으면 설치가 어려워요.</li>
         <li><b>천장 확인 ②</b> : 벽에서 <b>1100mm 안쪽</b>(도어가 열리는 범위) 천장에 <b>5cm 넘게 튀어나온 구조물</b>이 있으면 설치가 어려워요.</li>
       </ul>
-      <div style="margin-top:4px">측정이 어려우시면 아래 옵션에서 <b>방문실측서비스</b>를 신청해 주세요.</div>`;
+      <div style="margin-top:10px;padding-top:8px;border-top:1px dashed #e5d6d3"><b>치수가 맞지 않을 경우</b> (입력하신 치수 기준으로 제작돼요)
+        <ul style="margin-top:4px">
+          <li>시공 당일 현장 조정으로 해결되면 <b>추가 비용 없음</b></li>
+          <li>리폼이 필요하면 <b>리폼비 20만원</b></li>
+          <li>새로 제작해야 하면 <b>해당 장 제작비</b></li>
+        </ul></div>
+      <div style="margin-top:4px;color:#6b7280">직접 재기 어려우시면 방문실측서비스를 신청하실 수 있어요.</div>`;
     w.parentElement.appendChild(d);
   })();
 
@@ -389,7 +395,7 @@
         <div class="mp-thumbs" id="mpThumbs"></div>
       </div>
       <label class="mp-consent"><input type="checkbox" id="mpAgree" ${orderForm.agree ? 'checked' : ''}>
-        <span>[필수] 주문 상담을 위해 이름·연락처·주소를 수집하고 시공 완료 후 1년간 보관하는 데 동의합니다.</span></label>
+        <span>[필수] 셀프 실측 안내를 확인했으며, <b>입력한 치수 기준으로 제작</b>되어 측정 오류 시 리폼비 또는 재제작 비용이 생길 수 있음에 동의합니다. 주문 상담을 위해 이름·연락처·주소를 수집하고 시공 완료 후 1년간 보관하는 데에도 동의합니다.</span></label>
       <div class="mp-err" id="mpErr"></div>
       <button type="button" class="mp-cta kakao" id="mpSend">① 주문서 복사하고 카카오톡 채널 열기</button>
       <div class="mp-note" id="mpSendNote"><b>① 주문서 보내기</b> 버튼을 누르면 주문서가 복사되고 <b>우드팩커 카카오톡 채널</b>이 열려요. 채팅창에 <b>붙여넣고 보내주세요.</b></div>
@@ -537,6 +543,8 @@
     L.push('■ 견적');
     r.lines.forEach(l => L.push(`- ${l.t}: ${won(l.a)}`));
     L.push(`= 총 금액 ${won(r.total)}`);
+    L.push('');
+    L.push('✔ 셀프 실측 안내 확인 · 치수 기준 제작 동의');
     L.push('');
     L.push('상담팀 확인 후 결제 안내 부탁드립니다.');
     if (photos.length) {

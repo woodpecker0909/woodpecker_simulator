@@ -101,6 +101,7 @@
   .mp-pw div{width:112px;border:2px solid #eee;border-radius:10px;padding:6px;text-align:center;cursor:pointer;background:#fff;font-size:12px;line-height:1.4}
   .mp-pw div.on{border-color:#673131;background:#fbf6f5}
   .mp-pw img{width:96px;height:auto;display:block;margin:0 auto 4px}
+  .mp-pos{max-width:62%;padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;background:#fff}
   .mp-thumbs button{position:absolute;top:2px;right:2px;width:22px;height:22px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;font-size:13px;line-height:22px;cursor:pointer;padding:0}
   `;
   const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
@@ -261,11 +262,20 @@
     if (wl) wl.addEventListener('keydown', e => { if (e.key === 'Enter') { e.stopImmediatePropagation(); plan(); setTimeout(refresh, 0); } }, true);
   })();
 
+  // 외부서랍(디자인 I): 기본은 내부서랍, 체크하면 외부서랍
+  (function extDefault() {
+    const x = $('useExternalI'); if (!x) return;
+    x.checked = new URLSearchParams(location.search).get('x') === '1';
+    const lb = document.querySelector('label[for="useExternalI"]'); if (lb) lb.textContent = '외부서랍으로 변경 (체크 안 하면 내부서랍)';
+  })();
+  const extOn = () => !!($('useExternalI') && $('useExternalI').checked);
+
   // ---------- 상태 ----------
   const state = {
     color: COLORS[0], handle: HANDLES[0], hcolor: '',
     mirror: 0, side: 0, demolition: false, visit: false, d3: false,
     longShelf: 0, shortShelf: 0, addBig: 0, addSmall: 0, innerMirror: 0,
+    mirrorPos: [], innerPos: [],   // 거울 위치: 왼쪽에서 몇 번째 도어
   };
 
   // ---------- UI ----------
@@ -307,6 +317,7 @@
       <div class="mp-field"><label>추가 옵션 (필요할 때만)</label>
         ${stepper('mirror', '거울도어', PRICE.mirrorDoor)}
         ${stepper('innerMirror', '도어 안쪽 거울 (300×1500)', PRICE.innerMirror)}
+        <div id="mpMirrorPos"></div>
         ${stepper('side', '측판(EP) (벽이 없는 쪽 · 커튼박스 쪽 마감)', PRICE.sidePanel)}
       </div>
       <div class="mp-field" style="margin-top:14px"><label>내부 구성 추가 (정해진 구성 외에 더 넣고 싶을 때)</label>
@@ -321,11 +332,48 @@
         ${toggleRow('d3', '3D도면서비스', PRICE.design3d)}
       </div>`;
   }
+  // ---------- 거울 위치 (왼쪽에서 몇 번째 도어) ----------
+  function doorList() {
+    const out = []; let no = 0;
+    (Array.isArray(units) ? units : []).forEach((u, i) => {
+      const nm = u.type === 'big' ? '큰장' : u.type === 'small' ? '작은장' : u.type === 'styler' ? '스타일러장' : '화장대';
+      if (u.type === 'big') { out.push({ no: ++no, ui: i, side: 'L', ok: true, hint: `${i + 1}번째 장 ${nm} 왼쪽 문` }); out.push({ no: ++no, ui: i, side: 'R', ok: true, hint: `${i + 1}번째 장 ${nm} 오른쪽 문` }); }
+      else out.push({ no: ++no, ui: i, side: '', ok: u.type === 'small', hint: `${i + 1}번째 장 ${nm}` });
+    });
+    return out;
+  }
+  const posText = arr => arr.length ? '왼쪽에서 ' + arr.map(n => n + '번째').join('·') + ' 도어' : '위치 미정';
+  function mirrorMemo() {
+    const t = [];
+    if (state.mirror) t.push(`거울도어: ${posText(state.mirrorPos)}`);
+    if (state.innerMirror) t.push(`도어 안쪽 거울: ${posText(state.innerPos)}`);
+    return t.join(' / ');
+  }
+  function fixPos(key, count) {
+    let okNos = doorList().filter(d => d.ok).map(d => d.no);
+    if (key === 'innerPos') okNos = [...okNos.filter(n => !state.mirrorPos.includes(n)), ...okNos.filter(n => state.mirrorPos.includes(n))];
+    let arr = state[key].filter(n => okNos.includes(n));
+    arr = arr.filter((n, i) => arr.indexOf(n) === i).slice(0, count);
+    for (const n of okNos) { if (arr.length >= count) break; if (!arr.includes(n)) arr.push(n); }
+    state[key] = arr;
+  }
+  function renderMirrorPos() {
+    const box = $('mpMirrorPos'); if (!box) return;
+    fixPos('mirrorPos', state.mirror); fixPos('innerPos', state.innerMirror);
+    const doors = doorList();
+    const sel = (key, i) => `<select class="mp-pos" data-k="${key}" data-i="${i}">${doors.filter(d => d.ok).map(d => `<option value="${d.no}" ${state[key][i] === d.no ? 'selected' : ''} ${state[key].includes(d.no) && state[key][i] !== d.no ? 'disabled' : ''}>왼쪽에서 ${d.no}번째 도어 (${d.hint})</option>`).join('')}</select>`;
+    const rows = [];
+    state.mirrorPos.forEach((_, i) => rows.push(`<div class="mp-row"><span>거울도어 ${state.mirror > 1 ? i + 1 : ''}</span>${sel('mirrorPos', i)}</div>`));
+    state.innerPos.forEach((_, i) => rows.push(`<div class="mp-row"><span>안쪽 거울 ${state.innerMirror > 1 ? i + 1 : ''}</span>${sel('innerPos', i)}</div>`));
+    box.innerHTML = rows.length ? `<div class="mp-note" style="margin:6px 0 2px">거울 위치를 골라주세요. 도어는 <b>왼쪽부터 1번째</b>로 세요. 거울도어는 <b>도어 닫힘</b> 미리보기에 표시돼요.</div>${rows.join('')}` : '';
+    box.querySelectorAll('.mp-pos').forEach(el => el.onchange = () => { state[el.dataset.k][Number(el.dataset.i)] = Number(el.value); renderMirrorPos(); refresh(); redrawPreview(); });
+  }
+
   optCard.addEventListener('click', e => {
     const c = e.target.closest('.mp-chip');
     if (c) { state[c.dataset.g] = c.dataset.v; if (c.dataset.g === 'handle') state.hcolor = hcList(state.handle)[0] || ''; renderOptions(); refresh(); if (c.dataset.g !== 'g') redrawPreview(); return; }
     const b = e.target.closest('[data-step]');
-    if (b) { const k = b.dataset.step; state[k] = Math.max(0, Math.min(20, state[k] + Number(b.dataset.d))); $('mpS_' + k).textContent = state[k]; refresh(); }
+    if (b) { const k = b.dataset.step; state[k] = Math.max(0, Math.min(20, state[k] + Number(b.dataset.d))); $('mpS_' + k).textContent = state[k]; refresh(); renderMirrorPos(); redrawPreview(); }
   });
   optCard.addEventListener('change', e => {
     if (e.target.id === 'mpT_demolition') state.demolition = e.target.checked;
@@ -370,6 +418,31 @@
     });
     ctx.restore();
   }
+  // 도어 이미지가 그려진 x 위치로 몇 번째 장인지 찾기 (미리보기 배치 규칙과 같게 계산)
+  function unitAtX(x) {
+    const us = Array.isArray(units) ? units : []; if (!us.length || !currentPlan) return null;
+    let cx = Math.max(3, Math.round(currentPlan.surround * 0.16)), best = null, bd = Infinity;
+    us.forEach((u, i) => { if ((u.type === 'big' || u.type === 'small') && Math.abs(cx - x) < bd) { bd = Math.abs(cx - x); best = i; } cx += u.w * 0.16 - 15; });
+    return best;
+  }
+  function drawMirrors(isBig, x, y, w, h) {
+    if (!state.mirrorPos.length) return;
+    const uIdx = unitAtX(x);
+    if (uIdx == null) return;
+    const ctx = $('previewCanvas').getContext('2d');
+    doorList().filter(d => d.ui === uIdx && state.mirrorPos.includes(d.no)).forEach(d => {
+      const dw = isBig ? w / 2 : w, dx = d.side === 'R' ? x + w / 2 : x;
+      const mx = dx + dw * 0.08, my = y + h * 0.04, mw = dw * 0.84, mh = h * 0.92;
+      ctx.save();
+      const g = ctx.createLinearGradient(mx, my, mx + mw, my + mh);
+      g.addColorStop(0, '#cfd9dd'); g.addColorStop(0.45, '#eef3f5'); g.addColorStop(0.55, '#dce5e8'); g.addColorStop(1, '#bfcbd0');
+      ctx.fillStyle = g; ctx.fillRect(mx, my, mw, mh);
+      ctx.globalAlpha = 0.55; ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.moveTo(mx + mw * 0.15, my + mh); ctx.lineTo(mx + mw * 0.35, my + mh); ctx.lineTo(mx + mw * 0.85, my); ctx.lineTo(mx + mw * 0.65, my); ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 1; ctx.strokeStyle = 'rgba(0,0,0,.18)'; ctx.lineWidth = 1; ctx.strokeRect(mx, my, mw, mh);
+      ctx.restore();
+    });
+  }
   function redrawPreview() { try { if (typeof renderPreview === 'function' && currentPlan) renderPreview(); } catch (e) {} }
   concreteImg.onload = () => { if (state.color === '콘크리트화이트') redrawPreview(); };
   (function patchPreview() {
@@ -394,7 +467,10 @@
           }
           ctx.fillStyle = fill; ctx.fillRect(a[0], a[1], a[2], a[3]); ctx.restore();
         }
-        if (a.length === 4 && /\/door_[^/]*$/.test(src)) drawHandle(/door_big/.test(src), a[0], a[1], a[2], a[3]);
+        if (a.length === 4 && /\/door_[^/]*$/.test(src)) {
+          drawMirrors(/door_big/.test(src), a[0], a[1], a[2], a[3]);
+          drawHandle(/door_big/.test(src), a[0], a[1], a[2], a[3]);
+        }
       } catch (e) {}
     };
   })();
@@ -428,8 +504,8 @@
     if (bigD) lines.push({ k: 'bigD', t: `대서랍 ${bigD}개`, a: bigD * PRICE.bigDrawer, store: '대서랍', n: bigD });
     if (smallD) lines.push({ k: 'smallD', t: `소서랍 ${smallD}개`, a: smallD * PRICE.smallDrawer, store: '소서랍', n: smallD });
     powderUnits.forEach(x => lines.push({ k: 'powder', t: `화장대 ${x.s} ${POWDER_NAME[x.s] || ''} (800mm)`, a: PRICE.powder[x.s] || 0, notInStore: true }));
-    if (state.mirror) lines.push({ k: 'mirror', t: `거울도어 ${state.mirror}개`, a: state.mirror * PRICE.mirrorDoor, store: '거울도어', n: state.mirror });
-    if (state.innerMirror) lines.push({ k: 'innerMirror', t: `도어 안쪽 거울 300×1500 ${state.innerMirror}개`, a: state.innerMirror * PRICE.innerMirror, store: '도어 안쪽 거울', n: state.innerMirror });
+    if (state.mirror) lines.push({ k: 'mirror', t: `거울도어 ${state.mirror}개 (${posText(state.mirrorPos)})`, a: state.mirror * PRICE.mirrorDoor, store: '거울도어', n: state.mirror });
+    if (state.innerMirror) lines.push({ k: 'innerMirror', t: `도어 안쪽 거울 300×1500 ${state.innerMirror}개 (${posText(state.innerPos)})`, a: state.innerMirror * PRICE.innerMirror, store: '도어 안쪽 거울', n: state.innerMirror });
     if (state.longShelf) lines.push({ k: 'longShelf', t: `긴 선반 추가 ${state.longShelf}개`, a: state.longShelf * PRICE.longShelf, store: '긴 선반 추가', n: state.longShelf });
     if (state.shortShelf) lines.push({ k: 'shortShelf', t: `짧은 선반 추가 ${state.shortShelf}개`, a: state.shortShelf * PRICE.shortShelf, store: '짧은 선반 추가', n: state.shortShelf });
     if (state.addBig) lines.push({ k: 'addBig', t: `대서랍 추가 ${state.addBig}개`, a: state.addBig * PRICE.bigDrawer, store: '대서랍', n: state.addBig });
@@ -485,6 +561,7 @@
         <li>수량을 <b class="hl">${r.qty}개</b>로 맞추기</li>
         ${adds.length ? `<li>추가상품 담기: <b>${adds.map(esc).join(', ')}</b></li>` : ''}
         ${powderNote}
+        ${mirrorMemo() ? `<li>주문 메모에 거울 위치를 적어주세요<div class="mp-code">${esc(mirrorMemo())}</div></li>` : ''}
       </ol>
       <button type="button" class="mp-cta" id="mpGoStore">구성 코드 복사하고 스토어로 돌아가기</button>
       <div class="mp-note">스토어 결제 금액이 위 견적 금액과 같은지 마지막에 한 번 확인해주세요.</div>`;
@@ -559,8 +636,8 @@
   function viewLink(r) {
     const q = new URLSearchParams({
       w: r.wall, u: r.code.mid, c: COLORS.indexOf(state.color), h: HANDLES.indexOf(state.handle), hc: Math.max(0, hcList(state.handle).indexOf(state.hcolor)),
-      m: state.mirror, s: state.side, d: state.demolition ? 1 : 0, v: state.visit ? 1 : 0, t: state.d3 ? 1 : 0,
-      ls: state.longShelf, ss: state.shortShelf, ab: state.addBig, as: state.addSmall, im: state.innerMirror, view: 1,
+      m: state.mirror, s: state.side, d: state.demolition ? 1 : 0, v: state.visit ? 1 : 0, t: state.d3 ? 1 : 0, x: extOn() ? 1 : 0,
+      ls: state.longShelf, ss: state.shortShelf, ab: state.addBig, as: state.addSmall, im: state.innerMirror, mp: state.mirrorPos.join('.'), ip: state.innerPos.join('.'), view: 1,
     });
     return BASE + 'store.html?' + q.toString();
   }
@@ -603,6 +680,8 @@
       state.mirror = Math.max(0, Number(q.get('m')) || 0); state.side = Math.max(0, Number(q.get('s')) || 0);
       state.demolition = q.get('d') === '1'; state.visit = q.get('v') === '1'; state.d3 = q.get('t') === '1';
       [['longShelf','ls'],['shortShelf','ss'],['addBig','ab'],['addSmall','as'],['innerMirror','im']].forEach(([k, p]) => { state[k] = Math.max(0, Math.min(20, Number(q.get(p)) || 0)); });
+      state.mirrorPos = (q.get('mp') || '').split('.').map(Number).filter(n => n > 0);
+      state.innerPos = (q.get('ip') || '').split('.').map(Number).filter(n => n > 0);
       renderedOptions = false;
       const e = restore(q.get('u'), q.get('w'));
       if (!e && q.get('view') === '1') {
@@ -663,6 +742,7 @@
     L.push(`■ 구성 ${r.code.full}`);
     L.push(`  ${r.units.map((u, i) => unitLabel(u, r.selections[i])).join(' / ')}`);
     L.push(`■ 색상 ${state.color} · 손잡이 ${handleName()}`);
+    if (r.selections.includes('I')) L.push(`■ I 서랍장: ${extOn() ? '외부서랍' : '내부서랍'}`);
     L.push(`■ 구성 보기: ${viewLink(r)}`);
     L.push('');
     L.push('■ 견적');
@@ -697,6 +777,7 @@
     bar.style.display = on ? 'flex' : 'none';
     if (!on) return;
     if (!renderedOptions) { renderOptions(); renderedOptions = true; }
+    renderMirrorPos();
     renderPrice(r);
     if (new URLSearchParams(location.search).get('view') === '1') { nextCard.style.display = 'none'; return; }
     if (MODE === 'order') { if (!$('mpSend')) renderNextOrder(r); }

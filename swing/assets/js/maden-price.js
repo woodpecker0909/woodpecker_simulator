@@ -263,6 +263,9 @@
   })();
 
   // 외부서랍(디자인 I): 기본은 내부서랍, 체크하면 외부서랍
+  // 스타일러장 기본은 ST5(600, 5벌식). 특별한 경우만 ST3(450)
+  (function stylerDefault() { const t = $('stylerType'); if (t && !new URLSearchParams(location.search).get('u')) t.value = '600'; })();
+
   (function extDefault() {
     const x = $('useExternalI'); if (!x) return;
     x.checked = new URLSearchParams(location.search).get('x') === '1';
@@ -443,6 +446,38 @@
       ctx.restore();
     });
   }
+  // 스타일러장·화장대 그림: 흰 몸통(밝고 무채색인 부분)에만 도어 색을 입힘 (가전·거울·조명은 그대로)
+  const tintCache = {};
+  function tintFrame(img) {
+    const hex = COLOR_HEX[state.color];
+    if (!hex || state.color === COLORS[0] || !img.naturalWidth) return img;
+    const key = img.src + '|' + state.color;
+    if (tintCache[key]) return tintCache[key];
+    const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+    const x = c.getContext('2d'); x.drawImage(img, 0, 0);
+    const d = x.getImageData(0, 0, c.width, c.height), px = d.data;
+    const tr = parseInt(hex.slice(1, 3), 16) / 255, tg = parseInt(hex.slice(3, 5), 16) / 255, tb = parseInt(hex.slice(5, 7), 16) / 255;
+    // 속장(거울 칸·다리 공간)은 속장 색 그대로 두기: 그림 크기 대비 비율 영역
+    const code = (img.src.match(/(ST3|ST5|PA|PB|PC)\.\w+$/) || [])[1] || '';
+    const SKIP = {
+      PA: [[.06, .02, .94, .655], [.06, .745, .94, .94]],
+      PB: [[.06, .02, .94, .655]],
+      PC: [[.06, .06, .94, .69], [.06, .79, .94, .94]],
+    }[code] || [];
+    const W = c.width, H = c.height;
+    for (let yy = 0; yy < H; yy++) for (let xx = 0; xx < W; xx++) {
+      const fx = xx / W, fy = yy / H;
+      if (SKIP.some(q => fx > q[0] && fx < q[2] && fy > q[1] && fy < q[3])) continue;
+      const i = (yy * W + xx) * 4, r = px[i], g = px[i + 1], b = px[i + 2];
+      const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+      // 밝고 무채색일수록 색을 많이 입힘 (경계가 부드럽게)
+      const k = Math.min(1, Math.max(0, (mx - 140) / 60)) * Math.min(1, Math.max(0, (34 - (mx - mn)) / 18));
+      if (k <= 0) continue;
+      px[i] = r * (1 - k + k * tr); px[i + 1] = g * (1 - k + k * tg); px[i + 2] = b * (1 - k + k * tb);
+    }
+    x.putImageData(d, 0, 0);
+    tintCache[key] = c; return c;
+  }
   function redrawPreview() { try { if (typeof renderPreview === 'function' && currentPlan) renderPreview(); } catch (e) {} }
   concreteImg.onload = () => { if (state.color === '콘크리트화이트') redrawPreview(); };
   (function patchPreview() {
@@ -453,7 +488,9 @@
     ctx.setLineDash = function (a) { dash(a); if (a && a.length) ctx.strokeStyle = 'rgba(0,0,0,0)'; };
     // 닫힌 도어 이미지 위에 선택한 색을 곱하기로 입힘
     ctx.drawImage = function (img, ...a) {
-      draw(img, ...a);
+      let pic = img;
+      try { if (/\/(styler|powder)_[^/]*$/.test((img && img.src) || '')) pic = tintFrame(img); } catch (e) { pic = img; }
+      draw(pic, ...a);
       try {
         const src = (img && img.src) || '';
         const hex = COLOR_HEX[state.color];

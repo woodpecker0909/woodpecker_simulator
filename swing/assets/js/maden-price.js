@@ -601,6 +601,7 @@
     const powderNote = '';
     nextCard.innerHTML = `
       <div class="mp-title">스마트스토어에서 이렇게 주문하세요</div>
+      <div class="mp-tip">📍 <b>시공 지역: 서울 · 경기 전 지역</b> (그 외 지역은 아직 시공이 어려워요)</div>
       <div class="mp-tip">📸 <b>먼저 이 화면을 캡처해 두세요.</b><br>스토어 화면과 계산기를 오가지 않고, 사진첩의 캡처를 보면서 주문하면 훨씬 편해요.</div>
       <ol class="mp-steps">
         <li>아래 버튼을 누르면 <b>구성 코드가 복사</b>되고 스토어가 <b>새 창</b>으로 열려요. (계산기는 이 창에 그대로 남아요)</li>
@@ -629,7 +630,7 @@
       <div class="mp-grid">
         <div class="mp-field"><label for="mpName">이름</label><input type="text" id="mpName" value="${esc(orderForm.name)}" autocomplete="name"></div>
         <div class="mp-field"><label for="mpPhone">연락처</label><input type="tel" id="mpPhone" value="${esc(orderForm.phone)}" placeholder="010-0000-0000" autocomplete="tel"></div>
-        <div class="mp-field" style="grid-column:1/-1"><label for="mpAddr">설치 주소 (아파트명·동·호수)</label><input type="text" id="mpAddr" value="${esc(orderForm.addr)}" autocomplete="street-address"></div>
+        <div class="mp-field" style="grid-column:1/-1"><label for="mpAddr">설치 주소 (아파트명·동·호수) · 서울·경기만 시공</label><input type="text" id="mpAddr" value="${esc(orderForm.addr)}" autocomplete="street-address"></div>
         <div class="mp-field"><label for="mpDate">희망 시공일</label><input type="text" id="mpDate" value="${esc(orderForm.date)}" placeholder="예) 11월 둘째 주"></div>
         <div class="mp-field"><label for="mpMemo">요청사항 (선택)</label><input type="text" id="mpMemo" value="${esc(orderForm.memo)}"></div>
       </div>

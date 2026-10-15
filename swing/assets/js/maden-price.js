@@ -24,6 +24,7 @@
   const DRAWERS = { G: 1, H: 2, I: 3 };           // 디자인별 서랍 개수
   const T_SHELF = { D: 50000, E: 30000, F: 30000 }; // 큰장 T선반 구성 추가금 (A·B·C·작은장은 무료)
   const T_NAME = { D: '긴T선반장', E: '반T선반', F: '6칸선반장' };
+  const T_STORE = { D: 'T선반', E: '반T선반', F: '반T선반' }; // 스마트스토어 추가상품 이름
   const COLORS = ['스완화이트', '웜화이트', '미스티그레이', '실키그레이', '콘크리트화이트'];
   // 색상 견본 (실제 자재 색에 맞게 숫자만 바꾸면 됨)
   // LX Z:IN 보르떼 / 한솔 스토리보드 견본 이미지에서 뽑은 색
@@ -141,7 +142,7 @@
   document.querySelectorAll('.muted').forEach(el => {
     el.innerHTML = el.innerHTML
       .replace('선반 구성과 스타일러장은 본체 가격에 포함돼요.', '기본 구성(A·B·C)과 스타일러장은 본체 가격에 포함돼요. T선반·서랍 구성은 추가금이 있어요.')
-      .replace(/G·H·I\(서랍장\)는[^<]*나머지 구성은 무료예요\./, '큰장 추가금: <b>D 긴T선반장 +5만 · E 반T선반 +3만 · F 6칸선반장 +3만</b> · G·H·I 서랍 개당 5만원<br>작은장: 서랍 개당 3만원 (선반 구성은 무료) · A·B·C는 무료예요.');
+      .replace(/G·H·I\(서랍장\)는[^<]*나머지 구성은 무료예요\./, '큰장 추가금: <b>T선반(D 긴T선반장) +5만 · 반T선반(E 반T선반 · F 6칸선반장) +3만</b> · G·H·I 서랍 개당 5만원<br>작은장: 서랍 개당 3만원 (선반 구성은 무료) · A·B·C는 무료예요.');
   });
 
   // 화장대 디자인: 선택칸에 이름 표시 (사진은 아래 미리보기에서 보임)
@@ -537,7 +538,7 @@
     const cx = PRICE.colorExtraPer10cm[state.color] || 0;
     if (cx) lines.push({ k: 'color', t: `${state.color} (10cm당 ${cx.toLocaleString()}원 × ${qty})`, a: qty * cx });
     const tCnt = {}; p.units.forEach((u, i) => { const k = p.selections[i]; if (u.type === 'big' && T_SHELF[k]) tCnt[k] = (tCnt[k] || 0) + 1; });
-    Object.keys(tCnt).sort().forEach(k => lines.push({ k: 't' + k, t: `T선반 구성 ${k} ${T_NAME[k]} ${tCnt[k]}개`, a: tCnt[k] * T_SHELF[k], store: `T선반 ${k}`, n: tCnt[k] }));
+    Object.keys(tCnt).sort().forEach(k => lines.push({ k: 't' + k, t: `${T_STORE[k]} (${k} ${T_NAME[k]}) ${tCnt[k]}개`, a: tCnt[k] * T_SHELF[k], store: T_STORE[k], n: tCnt[k] }));
     if (bigD) lines.push({ k: 'bigD', t: `대서랍 ${bigD}개`, a: bigD * PRICE.bigDrawer, store: '대서랍', n: bigD });
     if (smallD) lines.push({ k: 'smallD', t: `소서랍 ${smallD}개`, a: smallD * PRICE.smallDrawer, store: '소서랍', n: smallD });
     powderUnits.forEach(x => lines.push({ k: 'powder', t: `화장대 ${x.s} ${POWDER_NAME[x.s] || ''} (800mm)`, a: PRICE.powder[x.s] || 0, store: `화장대 ${x.s}`, n: 1 }));
@@ -577,7 +578,7 @@
       <div class="mp-note" style="margin:-6px 0 8px">벽 ${r.wall.toLocaleString()}mm · 좌우 서라운드 각 ${r.surround}mm · ${state.color} · ${esc(handleName())}</div>
       ${r.lines.map(l => `<div class="mp-row"><span>${esc(l.t)}</span><span class="n">${won(l.a)}</span></div>`).join('')}
       <div class="mp-total"><span>총 금액</span><b>${won(r.total)}</b></div>
-      <div class="mp-note">• 기본 구성(A·B·C)·옷봉·스타일러장은 본체 가격에 포함돼요. 큰장 T선반(D·E·F)과 서랍은 위에 따로 표시돼요.<br>• 10cm 미만 길이는 버려요. (예: 3,650mm → 36개)<br>• <b>이 금액 그대로 시공</b>되며, 현장에서 추가금이 붙지 않아요.</div>`;
+      <div class="mp-note">• 기본 구성(A·B·C)·옷봉·스타일러장은 본체 가격에 포함돼요. 큰장 T선반·반T선반과 서랍은 위에 따로 표시돼요.<br>• 10cm 미만 길이는 버려요. (예: 3,650mm → 36개)<br>• <b>이 금액 그대로 시공</b>되며, 현장에서 추가금이 붙지 않아요.</div>`;
     $('mpBarTotal').textContent = won(r.total);
   }
 

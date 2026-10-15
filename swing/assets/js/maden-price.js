@@ -540,7 +540,7 @@
     Object.keys(tCnt).sort().forEach(k => lines.push({ k: 't' + k, t: `T선반 구성 ${k} ${T_NAME[k]} ${tCnt[k]}개`, a: tCnt[k] * T_SHELF[k], store: `T선반 ${k}`, n: tCnt[k] }));
     if (bigD) lines.push({ k: 'bigD', t: `대서랍 ${bigD}개`, a: bigD * PRICE.bigDrawer, store: '대서랍', n: bigD });
     if (smallD) lines.push({ k: 'smallD', t: `소서랍 ${smallD}개`, a: smallD * PRICE.smallDrawer, store: '소서랍', n: smallD });
-    powderUnits.forEach(x => lines.push({ k: 'powder', t: `화장대 ${x.s} ${POWDER_NAME[x.s] || ''} (800mm)`, a: PRICE.powder[x.s] || 0, notInStore: true }));
+    powderUnits.forEach(x => lines.push({ k: 'powder', t: `화장대 ${x.s} ${POWDER_NAME[x.s] || ''} (800mm)`, a: PRICE.powder[x.s] || 0, store: `화장대 ${x.s}`, n: 1 }));
     if (state.mirror) lines.push({ k: 'mirror', t: `거울도어 ${state.mirror}개 (${posText(state.mirrorPos)})`, a: state.mirror * PRICE.mirrorDoor, store: '거울도어', n: state.mirror });
     if (state.innerMirror) lines.push({ k: 'innerMirror', t: `도어 안쪽 거울 300×1500 ${state.innerMirror}개 (${posText(state.innerPos)})`, a: state.innerMirror * PRICE.innerMirror, store: '도어 안쪽 거울', n: state.innerMirror });
     if (state.longShelf) lines.push({ k: 'longShelf', t: `긴 선반 추가 ${state.longShelf}개`, a: state.longShelf * PRICE.longShelf, store: '긴 선반 추가', n: state.longShelf });
@@ -588,7 +588,7 @@
 
   function renderNextStore(r) {
     const adds = storeAddons(r);
-    const powderNote = r.powder.length ? `<li>화장대는 스마트스토어에서 선택할 수 없어요. 주문 후 <b>상담팀이 화장대 금액(${won(r.powder.reduce((s, x) => s + (PRICE.powder[x.s] || 0), 0))})을 따로 안내</b>드려요.</li>` : '';
+    const powderNote = '';
     nextCard.innerHTML = `
       <div class="mp-title">스마트스토어에서 이렇게 주문하세요</div>
       <ol class="mp-steps">

@@ -70,6 +70,7 @@
   .mp-step span{min-width:22px;text-align:center;font-variant-numeric:tabular-nums}
   .mp-total{display:flex;justify-content:space-between;align-items:baseline;margin-top:12px;padding-top:12px;border-top:2px solid #673131}
   .mp-total b{font-size:26px;color:#673131;font-variant-numeric:tabular-nums}
+  .mp-tip{background:#fbf6f5;border:1px solid #f0dcd8;border-radius:10px;padding:10px 12px;margin:0 0 10px;font-size:13.5px;line-height:1.6;color:#4e4442}
   .mp-note{font-size:12.5px;color:#6b7280;margin-top:8px;line-height:1.6}
   .mp-cta{display:block;width:100%;margin-top:14px;padding:15px;border:0;border-radius:12px;background:#673131;color:#fff;font-size:17px;font-weight:700;cursor:pointer;text-align:center;text-decoration:none}
   .mp-cta.kakao{background:#FEE500;color:#191919}
@@ -600,6 +601,7 @@
     const powderNote = '';
     nextCard.innerHTML = `
       <div class="mp-title">스마트스토어에서 이렇게 주문하세요</div>
+      <div class="mp-tip">📸 <b>먼저 이 화면을 캡처해 두세요.</b><br>스토어 화면과 계산기를 오가지 않고, 사진첩의 캡처를 보면서 주문하면 훨씬 편해요.</div>
       <ol class="mp-steps">
         <li>아래 버튼을 누르면 <b>구성 코드가 복사</b>되고 스토어가 <b>새 창</b>으로 열려요. (계산기는 이 창에 그대로 남아요)</li>
         <li>옵션 첫 칸 <b>사이즈&디자인 구성</b>에 붙여넣기<div class="mp-code">${esc(storeCode(r))}</div></li>
@@ -608,9 +610,10 @@
         ${adds.length ? `<li>추가상품 담기: <b>${adds.map(esc).join(', ')}</b></li>` : ''}
         ${powderNote}
         ${mirrorMemo() ? `<li>주문 메모에 거울 위치를 적어주세요<div class="mp-code">${esc(mirrorMemo())}</div></li>` : ''}
+        <li>장바구니에 담은 뒤 <b>장바구니 금액이 <span class="hl" style="color:#d12c2c">${won(r.total)}</span>인지</b> 확인하고 결제해주세요.</li>
       </ol>
       <button type="button" class="mp-cta" id="mpGoStore">구성 코드 복사하고 스토어 새 창으로 열기</button>
-      <div class="mp-note">스토어 결제 금액이 위 견적 금액과 같은지 마지막에 한 번 확인해주세요.</div>`;
+      <div class="mp-note">금액이 다르면 빠진 옵션이나 수량이 없는지 캡처와 비교해 보세요.</div>`;
     $('mpGoStore').onclick = async () => {
       await copyText(storeCode(r));
       showToast('구성 코드를 복사했어요. 새 창의 스토어 옵션 첫 칸에 붙여넣어 주세요.');

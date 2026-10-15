@@ -600,7 +600,7 @@
     nextCard.innerHTML = `
       <div class="mp-title">스마트스토어에서 이렇게 주문하세요</div>
       <ol class="mp-steps">
-        <li>아래 버튼을 누르면 <b>구성 코드가 복사</b>되고 스토어로 돌아가요.</li>
+        <li>아래 버튼을 누르면 <b>구성 코드가 복사</b>되고 스토어가 <b>새 창</b>으로 열려요. (계산기는 이 창에 그대로 남아요)</li>
         <li>옵션 첫 칸 <b>사이즈&디자인 구성</b>에 붙여넣기<div class="mp-code">${esc(storeCode(r))}</div></li>
         <li>컬러 <b>${esc(state.color)}</b> · 손잡이 <b>${esc(handleName())}</b> 선택</li>
         <li>수량을 <b class="hl">${r.qty}개</b>로 맞추기</li>
@@ -608,12 +608,13 @@
         ${powderNote}
         ${mirrorMemo() ? `<li>주문 메모에 거울 위치를 적어주세요<div class="mp-code">${esc(mirrorMemo())}</div></li>` : ''}
       </ol>
-      <button type="button" class="mp-cta" id="mpGoStore">구성 코드 복사하고 스토어로 돌아가기</button>
+      <button type="button" class="mp-cta" id="mpGoStore">구성 코드 복사하고 스토어 새 창으로 열기</button>
       <div class="mp-note">스토어 결제 금액이 위 견적 금액과 같은지 마지막에 한 번 확인해주세요.</div>`;
     $('mpGoStore').onclick = async () => {
       await copyText(storeCode(r));
-      showToast('구성 코드를 복사했어요. 스토어 옵션 첫 칸에 붙여넣어 주세요.');
-      setTimeout(() => { location.href = STORE_URL; }, 900);
+      showToast('구성 코드를 복사했어요. 새 창의 스토어 옵션 첫 칸에 붙여넣어 주세요.');
+      const w = window.open(STORE_URL, '_blank');
+      if (!w) setTimeout(() => { location.href = STORE_URL; }, 900);
     };
   }
 

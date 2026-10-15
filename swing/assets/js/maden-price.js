@@ -41,7 +41,7 @@
   const AUTO_HANDLE = { '레세르': true, '스마트바': true, '르씰': true };
   const autoTone = () => GRAY_DOORS.includes(state.color) ? '그레이' : '화이트';
   const handleName = () => state.handle + (AUTO_HANDLE[state.handle] ? `(${autoTone()})` : hcList(state.handle).length ? `(${state.hcolor})` : '');
-  const STORE_URL = 'https://smartstore.naver.com/woodpecker77/products/13625382270';
+  const STORE_URL = 'https://smartstore.naver.com/woodpecker77/products/12519634165';
   const KAKAO_URL = 'https://pf.kakao.com/_xjJTLC/chat';
   let MODE = (window.MADEN_MODE === 'order') ? 'order' : 'store';
 

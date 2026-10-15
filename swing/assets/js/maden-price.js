@@ -586,6 +586,14 @@
     return [...m].map(([k, n]) => `${k} ${n}개`);
   }
 
+  // 스마트스토어 옵션 칸에 붙여넣을 코드: 구성(서라운드 포함) + 거울 위치·외부서랍
+  function storeCode(r) {
+    let c = r.code.full;
+    if (state.mirrorPos.length) c += '/M' + state.mirrorPos.join('.');
+    if (state.innerPos.length) c += '/IM' + state.innerPos.join('.');
+    if (extOn() && r.selections.includes('I')) c += '/X';
+    return c;
+  }
   function renderNextStore(r) {
     const adds = storeAddons(r);
     const powderNote = '';
@@ -593,7 +601,7 @@
       <div class="mp-title">스마트스토어에서 이렇게 주문하세요</div>
       <ol class="mp-steps">
         <li>아래 버튼을 누르면 <b>구성 코드가 복사</b>되고 스토어로 돌아가요.</li>
-        <li>옵션 첫 칸 <b>사이즈&디자인 구성</b>에 붙여넣기<div class="mp-code">${esc(r.code.mid)}</div></li>
+        <li>옵션 첫 칸 <b>사이즈&디자인 구성</b>에 붙여넣기<div class="mp-code">${esc(storeCode(r))}</div></li>
         <li>컬러 <b>${esc(state.color)}</b> · 손잡이 <b>${esc(handleName())}</b> 선택</li>
         <li>수량을 <b class="hl">${r.qty}개</b>로 맞추기</li>
         ${adds.length ? `<li>추가상품 담기: <b>${adds.map(esc).join(', ')}</b></li>` : ''}
@@ -603,7 +611,7 @@
       <button type="button" class="mp-cta" id="mpGoStore">구성 코드 복사하고 스토어로 돌아가기</button>
       <div class="mp-note">스토어 결제 금액이 위 견적 금액과 같은지 마지막에 한 번 확인해주세요.</div>`;
     $('mpGoStore').onclick = async () => {
-      await copyText(r.code.mid);
+      await copyText(storeCode(r));
       showToast('구성 코드를 복사했어요. 스토어 옵션 첫 칸에 붙여넣어 주세요.');
       setTimeout(() => { location.href = STORE_URL; }, 900);
     };
@@ -732,11 +740,27 @@
     if (q.get('staff') === '1') {
       const box = document.createElement('div'); box.className = 'mp-card';
       box.innerHTML = `<div class="mp-title">직원용 · 구성 코드로 불러오기</div>
-        <div class="mp-grid"><div class="mp-field"><label for="mpLoadCode">구성 코드</label><input type="text" id="mpLoadCode" placeholder="예) 7.5L-9H-9A-9A-8PB-7.5R 또는 9H-9A-9A"></div>
+        <div class="mp-grid"><div class="mp-field"><label for="mpLoadCode">구성 코드</label><input type="text" id="mpLoadCode" placeholder="구성 코드 또는 구성 보기 링크를 붙여넣으세요"></div>
         <div class="mp-field"><label for="mpLoadWall">벽 길이 (mm, 코드에 L·R이 없을 때)</label><input type="number" id="mpLoadWall" placeholder="예) 3650"></div></div>
         <button type="button" class="mp-cta" id="mpLoadBtn" style="margin-top:12px">불러오기</button><div class="mp-err" id="mpLoadErr"></div>`;
       designCard.before(box);
-      $('mpLoadBtn').onclick = () => { $('mpLoadErr').textContent = restore($('mpLoadCode').value, $('mpLoadWall').value); };
+      $('mpLoadBtn').onclick = () => {
+        const raw = $('mpLoadCode').value.trim();
+        if (/^https?:\/\//.test(raw)) { location.href = raw; return; } // 구성 보기 링크를 붙여넣은 경우
+        const [code, ...ex] = raw.split('/');
+        state.mirrorPos = []; state.innerPos = []; state.mirror = 0; state.innerMirror = 0;
+        let ext = false;
+        ex.map(t => t.trim().toUpperCase()).forEach(t => {
+          const nums = (t.match(/[\d.]+$/) || [''])[0].split('.').map(Number).filter(n => n > 0);
+          if (t.startsWith('IM')) { state.innerPos = nums; state.innerMirror = nums.length; }
+          else if (t.startsWith('M')) { state.mirrorPos = nums; state.mirror = nums.length; }
+          else if (t === 'X') ext = true;
+        });
+        if ($('useExternalI')) $('useExternalI').checked = ext;
+        renderedOptions = false;
+        $('mpLoadErr').textContent = restore(code, $('mpLoadWall').value);
+        refresh(); redrawPreview();
+      };
     }
   }
 

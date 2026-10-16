@@ -389,7 +389,8 @@
 
   // ---------- 미리보기 보정 (파란 점선 숨김 · 닫힌 도어에 색 입히기) ----------
   // 스마트바: 도어 사이에 세로로 들어가는 알루미늄 바 (큰장=두 문 사이, 작은장=문 오른쪽 끝)
-  function drawSmartBar(isBig, x, y, w, h) {
+  const EXT_DOOR_END = 0.625; // 외부서랍 도어: 위에서 62.5% 지점까지가 문, 그 아래는 서랍 앞판
+  function drawSmartBar(isBig, x, y, w, h, ext) {
     const ctx = $('previewCanvas').getContext('2d');
     const mm = w / (isBig ? 900 : 450);
     const bw = Math.max(3, 18 * mm);
@@ -397,11 +398,11 @@
     const g = ctx.createLinearGradient(bx, 0, bx + bw, 0);
     const stops = autoTone() === '그레이' ? ['#77787a', '#b4b5b6', '#9a9b9c', '#6c6d6f'] : ['#cfcfcc', '#ffffff', '#f1f1ef', '#c4c4c1'];
     [0, .35, .6, 1].forEach((o, i) => g.addColorStop(o, stops[i]));
-    ctx.save(); ctx.fillStyle = g; ctx.fillRect(bx, y + h * 0.01, bw, h * 0.98); ctx.restore();
+    ctx.save(); ctx.fillStyle = g; ctx.fillRect(bx, y + h * 0.01, bw, h * ((ext ? EXT_DOOR_END : 0.99) - 0.01)); ctx.restore(); // 외부서랍이면 서랍 앞에서 멈춤
   }
   // 레세르·르씰: 문 여는 쪽 끝, 바닥에서 약 1m 높이 (큰장=두 문 가운데 양쪽, 작은장=문 오른쪽 끝)
-  function drawHandle(isBig, x, y, w, h) {
-    if (state.handle === '스마트바') return drawSmartBar(isBig, x, y, w, h);
+  function drawHandle(isBig, x, y, w, h, ext) {
+    if (state.handle === '스마트바') return drawSmartBar(isBig, x, y, w, h, ext);
     const col = autoTone() === '그레이' ? '#8b8c8e' : '#f3f3f1';
     const ctx = $('previewCanvas').getContext('2d');
     const mm = w / (isBig ? 900 : 450);
@@ -508,7 +509,7 @@
         }
         if (a.length === 4 && /\/door_[^/]*$/.test(src)) {
           drawMirrors(/door_big/.test(src), a[0], a[1], a[2], a[3]);
-          drawHandle(/door_big/.test(src), a[0], a[1], a[2], a[3]);
+          drawHandle(/door_big/.test(src), a[0], a[1], a[2], a[3], /door_(big|small)_I/.test(src));
         }
       } catch (e) {}
     };

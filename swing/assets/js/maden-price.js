@@ -6,7 +6,8 @@
 (function () {
   // ---------- 가격표 (여기 숫자만 고치면 전체 반영) ----------
   const PRICE = {
-    per10cm: 39900,            // 본체 10cm당 (스타일러장 포함)
+    per10cm: 39900,            // 본체 10cm당 (스타일러장 포함) — 일반(몰딩)
+    per10cmMM: 41900,          // 무몰딩 본체 10cm당
     colorExtraPer10cm: { '콘크리트화이트': 7000 },
     bigDrawer: 50000,          // 큰장 서랍 1개 (대서랍)
     smallDrawer: 30000,        // 작은장 서랍 1개 (소서랍)
@@ -41,7 +42,13 @@
   const AUTO_HANDLE = { '레세르': true, '스마트바': true, '르씰': true };
   const autoTone = () => GRAY_DOORS.includes(state.color) ? '그레이' : '화이트';
   const handleName = () => state.handle + (AUTO_HANDLE[state.handle] ? `(${autoTone()})` : hcList(state.handle).length ? `(${state.hcolor})` : '');
-  const STORE_URL = 'https://smartstore.naver.com/woodpecker77/products/12519634165';
+  const STORE_URLS = {
+    std: 'https://smartstore.naver.com/woodpecker77/products/12519634165', // 일반(몰딩)
+    mm: '',                                                                 // 무몰딩 — 스토어 상품 등록 후 상품 주소 넣기
+  };
+  const TYPE_NAME = { std: '일반(몰딩)', mm: '무몰딩' };
+  const storeUrl = () => STORE_URLS[state.type] || '';
+  const per10 = () => state.type === 'mm' ? PRICE.per10cmMM : PRICE.per10cm;
   const KAKAO_URL = 'https://pf.kakao.com/_xjJTLC/chat';
   let MODE = (window.MADEN_MODE === 'order') ? 'order' : 'store';
 
@@ -277,6 +284,7 @@
 
   // ---------- 상태 ----------
   const state = {
+    type: (new URLSearchParams(location.search).get('type') === 'mm' || window.MADEN_TYPE === 'mm') ? 'mm' : 'std',
     color: COLORS[0], handle: HANDLES[0], hcolor: '',
     mirror: 0, side: 0, demolition: false, visit: false, d3: false,
     longShelf: 0, shortShelf: 0, addBig: 0, addSmall: 0, innerMirror: 0,
@@ -296,6 +304,13 @@
 
   function showToast(t) { toast.textContent = t; toast.style.display = 'block'; clearTimeout(showToast._t); showToast._t = setTimeout(() => toast.style.display = 'none', 3500); }
 
+  // 일반/무몰딩: 제목과 주소(?type=mm)를 맞춤
+  function setTypeUI() {
+    const mm = state.type === 'mm';
+    try { const u = new URL(location.href); if (mm) u.searchParams.set('type', 'mm'); else u.searchParams.delete('type'); history.replaceState(null, '', u); } catch (e) {}
+    document.querySelectorAll('div').forEach(d => { if (d.children.length === 0 && /메이든 (무몰딩 )?여닫이 붙박이장/.test(d.textContent)) d.textContent = d.textContent.replace(/메이든 (무몰딩 )?여닫이 붙박이장/, mm ? '메이든 무몰딩 여닫이 붙박이장' : '메이든 여닫이 붙박이장'); });
+    document.title = document.title.replace(/(무몰딩 )?여닫이 붙박이장/, mm ? '무몰딩 여닫이 붙박이장' : '여닫이 붙박이장');
+  }
   function chip(group, val, label) {
     const on = state[group] === val;
     return `<span class="mp-chip ${on ? 'on' : ''}" data-g="${group}" data-v="${esc(val)}" role="button" tabindex="0">${label}</span>`;
@@ -311,6 +326,7 @@
   function renderOptions() {
     optCard.innerHTML = `
       <div class="mp-title">색상 · 손잡이 · 추가 옵션</div>
+      <div class="mp-field" style="margin-bottom:14px"><label>제품 (상단 마감)</label><div class="mp-chips">${chip('type', 'std', `일반 (몰딩)<small>10cm당 ${PRICE.per10cm.toLocaleString()}원</small>`)}${chip('type', 'mm', `무몰딩<small>10cm당 ${PRICE.per10cmMM.toLocaleString()}원</small>`)}</div></div>
       <div class="mp-field" style="margin-bottom:14px"><label>도어 색상</label><div class="mp-chips">
         ${COLORS.map(c => chip('color', c, `<i class="mp-sw" style="background:${c === '콘크리트화이트' ? `url(${CONCRETE_SRC}) center/cover` : COLOR_HEX[c]}"></i>` + c + (PRICE.colorExtraPer10cm[c] ? `<small>+10cm당 ${PRICE.colorExtraPer10cm[c].toLocaleString()}원</small>` : ''))).join('')}
       </div></div>
@@ -376,7 +392,7 @@
 
   optCard.addEventListener('click', e => {
     const c = e.target.closest('.mp-chip');
-    if (c) { state[c.dataset.g] = c.dataset.v; if (c.dataset.g === 'handle') state.hcolor = hcList(state.handle)[0] || ''; renderOptions(); refresh(); if (c.dataset.g !== 'g') redrawPreview(); return; }
+    if (c) { state[c.dataset.g] = c.dataset.v; if (c.dataset.g === 'type') setTypeUI(); if (c.dataset.g === 'handle') state.hcolor = hcList(state.handle)[0] || ''; renderOptions(); refresh(); if (c.dataset.g !== 'g') redrawPreview(); return; }
     const b = e.target.closest('[data-step]');
     if (b) { const k = b.dataset.step; state[k] = Math.max(0, Math.min(20, state[k] + Number(b.dataset.d))); $('mpS_' + k).textContent = state[k]; refresh(); renderMirrorPos(); redrawPreview(); }
   });
@@ -536,7 +552,7 @@
       if (u.type === 'small') smallD += n;
     });
     const lines = [];
-    lines.push({ k: 'body', t: `본체 ${qty}개 (10cm × ${qty}${powderW ? `, 화장대 ${powderW}mm 제외` : ''})`, a: qty * PRICE.per10cm });
+    lines.push({ k: 'body', t: `${state.type === 'mm' ? '무몰딩 ' : ''}본체 ${qty}개 (10cm × ${qty}${powderW ? `, 화장대 ${powderW}mm 제외` : ''})`, a: qty * per10() });
     const cx = PRICE.colorExtraPer10cm[state.color] || 0;
     if (cx) lines.push({ k: 'color', t: `${state.color} (10cm당 ${cx.toLocaleString()}원 × ${qty})`, a: qty * cx });
     const tCnt = {}; p.units.forEach((u, i) => { const k = p.selections[i]; if (u.type === 'big' && T_SHELF[k]) tCnt[k] = (tCnt[k] || 0) + 1; });
@@ -591,7 +607,7 @@
 
   // 스마트스토어 옵션 칸에 붙여넣을 코드: 구성(서라운드 포함) + 거울 위치·외부서랍
   function storeCode(r) {
-    let c = r.code.full;
+    let c = (state.type === 'mm' ? 'MM' : '') + r.code.full;
     if (state.mirrorPos.length) c += '/M' + state.mirrorPos.join('.');
     if (state.innerPos.length) c += '/IM' + state.innerPos.join('.');
     if (extOn() && r.selections.includes('I')) c += '/X';
@@ -648,8 +664,10 @@
     $('mpGoStore').onclick = async () => {
       await copyText(parts[0]);
       showToast(parts.length === 1 ? '구성 코드를 복사했어요. 새 창의 스토어 옵션 첫 칸에 붙여넣어 주세요.' : '첫 번째 칸 코드를 복사했어요. 붙여넣은 뒤 계산기로 돌아와 두 번째 칸을 복사해 주세요.');
-      const w = window.open(STORE_URL, '_blank');
-      if (!w) setTimeout(() => { location.href = STORE_URL; }, 900);
+      const url = storeUrl();
+      if (!url) { showToast('무몰딩 스토어 상품은 준비 중이에요. 톡톡으로 문의해 주세요.'); return; }
+      const w = window.open(url, '_blank');
+      if (!w) setTimeout(() => { location.href = url; }, 900);
     };
   }
 
@@ -720,12 +738,15 @@
       m: state.mirror, s: state.side, d: state.demolition ? 1 : 0, v: state.visit ? 1 : 0, t: state.d3 ? 1 : 0, x: extOn() ? 1 : 0,
       ls: state.longShelf, ss: state.shortShelf, ab: state.addBig, as: state.addSmall, im: state.innerMirror, mp: state.mirrorPos.join('.'), ip: state.innerPos.join('.'), view: 1,
     });
+    if (state.type === 'mm') q.set('type', 'mm');
     return BASE + 'store.html?' + q.toString();
   }
 
   // 코드(예: 7.5L-9H-9A-4.5I-8PB-7.5R 또는 9H-9A-4.5I)로 구성을 복원
   function restore(code, wallMm) {
-    const toks = String(code).trim().toUpperCase().replace(/\s+/g, '').split('-').filter(Boolean);
+    let cs = String(code).trim().toUpperCase().replace(/\s+/g, '');
+    if (cs.startsWith('MM')) { state.type = 'mm'; cs = cs.slice(2); setTypeUI(); }
+    const toks = cs.split('-').filter(Boolean);
     let surround = null; const us = [], sel = [];
     for (const t of toks) {
       const m = t.match(/^(\d+(?:\.\d+)?)([A-Z]+\d?)$/);
@@ -752,6 +773,7 @@
   }
 
   function applyParams() {
+    if (state.type === 'mm') setTypeUI();
     const q = new URLSearchParams(location.search);
     if (q.get('u')) {
       const ci = Number(q.get('c')), hi = Number(q.get('h'));
@@ -838,7 +860,8 @@
     L.push(`현장 사진: ${photos.length ? photos.length + '장 (이 메시지 다음에 따로 보낼게요)' : '없음'}`);
     L.push('');
     L.push(`■ 벽 길이 ${r.wall.toLocaleString()}mm (좌우 서라운드 각 ${r.surround}mm)`);
-    L.push(`■ 구성 ${r.code.full}`);
+    L.push(`■ 제품 메이든 ${TYPE_NAME[state.type]}`);
+    L.push(`■ 구성 ${storeCode(r)}`);
     L.push(`  ${r.units.map((u, i) => unitLabel(u, r.selections[i])).join(' / ')}`);
     L.push(`■ 색상 ${state.color} · 손잡이 ${handleName()}`);
     if (r.selections.includes('I')) L.push(`■ I 서랍장: ${extOn() ? '외부서랍' : '내부서랍'}`);
@@ -932,7 +955,7 @@
     const groups = packList(r).map(G => `<div class="pk-g">${esc(G.g)}</div>` + G.rows.map(x =>
       `<label class="pk-row"><input type="checkbox"><span class="pk-n">${esc(x.name)}${x.size ? ` <small>${esc(x.size)}</small>` : ''}</span><b>${x.n}</b></label>`).join('')).join('');
     const sw = state.color === '콘크리트화이트' ? `url(${CONCRETE_SRC}) center/cover` : (COLOR_HEX[state.color] || '#fff');
-    return `${packImgHTML(forPrint)}<div class="pk-head">구성 코드 <b>${esc(storeCode(r))}</b> · 벽 ${r.wall.toLocaleString()}mm</div>
+    return `${packImgHTML(forPrint)}<div class="pk-head"><b style="font-size:16px;color:#673131">메이든 ${TYPE_NAME[state.type]}</b><br>구성 코드 <b>${esc(storeCode(r))}</b> · 벽 ${r.wall.toLocaleString()}mm</div>
       <div class="pk-spec"><span><i class="pk-sw" style="background:${sw}"></i>색상 <b>${esc(state.color)}</b></span><span>손잡이 <b>${esc(handleName())}</b></span>${extOn() && r.selections.includes('I') ? '<span>외부서랍 <b>있음</b></span>' : ''}</div>
       <div class="pk-units">${units}</div><div class="pk-list">${groups}</div>
       ${forPrint ? '' : '<div class="mp-note">작은장은 SA·SB·SC·SG·SH·SI로 표시해요. 서랍장(G·H·I) 위 선반, 스타일러장·화장대 부속은 아직 기준 확인 전이에요.</div>'}`;

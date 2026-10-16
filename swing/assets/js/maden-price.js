@@ -596,16 +596,36 @@
     if (extOn() && r.selections.includes('I')) c += '/X';
     return c;
   }
+  // 스토어 직접입력 칸 글자수 제한 때문에, 긴 코드는 '-' 또는 '/' 경계에서 두 칸으로 나눔 (가운데에 가장 가까운 경계)
+  const SPLIT_OVER = 20;
+  function splitCode(c) {
+    if (c.length <= SPLIT_OVER) return [c];
+    let best = -1;
+    for (let i = 1; i < c.length; i++) {
+      if (c[i] !== '-' && c[i] !== '/') continue;
+      if (best < 0 || Math.abs(i - c.length / 2) < Math.abs(best - c.length / 2)) best = i;
+    }
+    if (best < 0) return [c];
+    return c[best] === '-' ? [c.slice(0, best), c.slice(best + 1)] : [c.slice(0, best), c.slice(best)];
+  }
   function renderNextStore(r) {
     const adds = storeAddons(r);
     const powderNote = '';
+    const parts = splitCode(storeCode(r));
+    const codeStep = parts.length === 1
+      ? `<li>아래 버튼을 누르면 <b>구성 코드가 복사</b>되고 스토어가 <b>새 창</b>으로 열려요. (계산기는 이 창에 그대로 남아요)</li>
+        <li>옵션 첫 칸 <b>사이즈&디자인 구성</b>에 붙여넣기<div class="mp-code">${esc(parts[0])}</div></li>`
+      : `<li>코드가 길어서 <b>두 칸으로 나눠 드렸어요.</b> 칸마다 복사 버튼을 눌러 붙여넣어 주세요.</li>
+        <li><b>첫 번째 칸</b>에 붙여넣기<div class="mp-code">${esc(parts[0])}</div>
+          <button type="button" class="mp-photo-btn mp-cp" data-i="0" style="margin-top:6px">첫 번째 칸 코드 복사</button></li>
+        <li><b>두 번째 칸</b>에 붙여넣기<div class="mp-code">${esc(parts[1])}</div>
+          <button type="button" class="mp-photo-btn mp-cp" data-i="1" style="margin-top:6px">두 번째 칸 코드 복사</button></li>`;
     nextCard.innerHTML = `
       <div class="mp-title">스마트스토어에서 이렇게 주문하세요</div>
       <div class="mp-tip">📍 <b>시공 지역: 서울 · 경기 전 지역</b> (그 외 지역은 아직 시공이 어려워요)</div>
       <div class="mp-tip">📸 <b>먼저 이 화면을 캡처해 두세요.</b><br>스토어 화면과 계산기를 오가지 않고, 사진첩의 캡처를 보면서 주문하면 훨씬 편해요.</div>
       <ol class="mp-steps">
-        <li>아래 버튼을 누르면 <b>구성 코드가 복사</b>되고 스토어가 <b>새 창</b>으로 열려요. (계산기는 이 창에 그대로 남아요)</li>
-        <li>옵션 첫 칸 <b>사이즈&디자인 구성</b>에 붙여넣기<div class="mp-code">${esc(storeCode(r))}</div></li>
+        ${codeStep}
         <li>컬러 <b>${esc(state.color)}</b> · 손잡이 <b>${esc(handleName())}</b> 선택</li>
         <li>수량을 <b class="hl">${r.qty}개</b>로 맞추기</li>
         ${adds.length ? `<li>추가상품 담기: <b>${adds.map(esc).join(', ')}</b></li>` : ''}
@@ -613,11 +633,20 @@
         ${mirrorMemo() ? `<li>주문 메모에 거울 위치를 적어주세요<div class="mp-code">${esc(mirrorMemo())}</div></li>` : ''}
         <li>장바구니에 담은 뒤 <b>장바구니 금액이 <span class="hl" style="color:#d12c2c">${won(r.total)}</span>인지</b> 확인하고 결제해주세요.</li>
       </ol>
-      <button type="button" class="mp-cta" id="mpGoStore">구성 코드 복사하고 스토어 새 창으로 열기</button>
+      <button type="button" class="mp-cta" id="mpGoStore">${parts.length === 1 ? '구성 코드 복사하고 스토어 새 창으로 열기' : '첫 번째 칸 코드 복사하고 스토어 새 창으로 열기'}</button>
+      ${parts.length > 1 ? '<div class="mp-note">첫 칸을 붙여넣은 뒤 <b>이 계산기 창으로 돌아와</b> 두 번째 칸 코드를 복사해 주세요.</div>' : ''}
       <div class="mp-note">금액이 다르면 빠진 옵션이나 수량이 없는지 캡처와 비교해 보세요.</div>`;
+    nextCard.querySelectorAll('.mp-cp').forEach(b => {
+      b.onclick = async () => {
+        const i = Number(b.dataset.i);
+        const ok = await copyText(parts[i]);
+        showToast(ok ? `${i ? '두' : '첫'} 번째 칸 코드를 복사했어요. 스토어 ${i ? '두' : '첫'} 번째 칸에 붙여넣어 주세요.` : '자동 복사가 안 됐어요. 코드를 길게 눌러 복사해주세요.');
+        b.textContent = `✓ ${i ? '두' : '첫'} 번째 칸 코드 복사됨`;
+      };
+    });
     $('mpGoStore').onclick = async () => {
-      await copyText(storeCode(r));
-      showToast('구성 코드를 복사했어요. 새 창의 스토어 옵션 첫 칸에 붙여넣어 주세요.');
+      await copyText(parts[0]);
+      showToast(parts.length === 1 ? '구성 코드를 복사했어요. 새 창의 스토어 옵션 첫 칸에 붙여넣어 주세요.' : '첫 번째 칸 코드를 복사했어요. 붙여넣은 뒤 계산기로 돌아와 두 번째 칸을 복사해 주세요.');
       const w = window.open(STORE_URL, '_blank');
       if (!w) setTimeout(() => { location.href = STORE_URL; }, 900);
     };
@@ -746,13 +775,15 @@
     if (q.get('staff') === '1') {
       const box = document.createElement('div'); box.className = 'mp-card';
       box.innerHTML = `<div class="mp-title">직원용 · 구성 코드로 불러오기</div>
-        <div class="mp-grid"><div class="mp-field"><label for="mpLoadCode">구성 코드</label><input type="text" id="mpLoadCode" placeholder="구성 코드 또는 구성 보기 링크를 붙여넣으세요"></div>
+        <div class="mp-grid"><div class="mp-field"><label for="mpLoadCode">구성 코드</label><input type="text" id="mpLoadCode" placeholder="첫 번째 칸 코드 또는 구성 보기 링크"></div>
+        <div class="mp-field"><label for="mpLoadCode2">두 번째 칸 코드 (있을 때만)</label><input type="text" id="mpLoadCode2" placeholder="주문에 두 번째 칸이 있으면 붙여넣기"></div>
         <div class="mp-field"><label for="mpLoadWall">벽 길이 (mm, 코드에 L·R이 없을 때)</label><input type="number" id="mpLoadWall" placeholder="예) 3650"></div></div>
         <button type="button" class="mp-cta" id="mpLoadBtn" style="margin-top:12px">불러오기</button><div class="mp-err" id="mpLoadErr"></div>`;
       designCard.before(box);
       $('mpLoadBtn').onclick = () => {
-        const raw = $('mpLoadCode').value.trim();
-        if (/^https?:\/\//.test(raw)) { location.href = raw; return; } // 구성 보기 링크를 붙여넣은 경우
+        const a = $('mpLoadCode').value.replace(/\s+/g, '').replace(/-+$/, ''), b = $('mpLoadCode2').value.replace(/\s+/g, '').replace(/^-+/, '');
+        if (/^https?:\/\//.test(a)) { location.href = a; return; } // 구성 보기 링크를 붙여넣은 경우
+        const raw = !b ? a : (b.startsWith('/') ? a + b : a + '-' + b);
         const [code, ...ex] = raw.split('/');
         state.mirrorPos = []; state.innerPos = []; state.mirror = 0; state.innerMirror = 0;
         let ext = false;

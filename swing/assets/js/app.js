@@ -88,8 +88,16 @@ function loadImageSeq(candidates){
   });
 }
 
-function makeThumbWithFallback(srcBase, label){
+// 디자인 이름 (썸네일 라벨용)
+const DESIGN_NAME = { A:'2단 옷봉', B:'옷봉+선반', C:'선반장', D:'긴T선반장', E:'반T선반', F:'6칸선반장', G:'서랍 1단', H:'서랍 2단', I:'서랍 3단',
+  ST3:'스타일러 3벌', ST5:'스타일러 5벌', PA:'수납거울 좌식', PB:'수납거울 입식', PC:'템바보드 좌식' };
+function makeThumbWithFallback(srcBase, label, badge){
   const wrap=document.createElement('div'); wrap.className="thumb";
+  if(badge){
+    const b=document.createElement('div'); b.className="thumb-badge";
+    b.innerHTML = `<b>${badge}</b>${DESIGN_NAME[label] ? `<span>${DESIGN_NAME[label]}</span>` : ''}`;
+    wrap.appendChild(b);
+  }
   const img=document.createElement('img'); img.alt=label;
   const ph=document.createElement('div'); ph.className="ph"; ph.textContent=label+" (이미지 자리)";
   ph.style.display="none";
@@ -233,7 +241,7 @@ function renderSlots(){
     if(u.type==="big" || u.type==="small"){
       const letters = (u.type==="big")?LETTERS_BIG:LETTERS_SMALL;
       letters.forEach(letter=>{
-        const div=makeThumbWithFallback(getDesignImageBase(u.type, letter), letter);
+        const div=makeThumbWithFallback(getDesignImageBase(u.type, letter), letter, (u.type==="small"?"S":"")+letter);
         if(selections[idx]===letter) div.classList.add('active');
         div.addEventListener('click',()=>{
           selections[idx]=letter;
@@ -245,7 +253,7 @@ function renderSlots(){
       });
     }else if(u.type==="styler"){
       ["ST3","ST5"].forEach(code=>{
-        const div = makeThumbWithFallback(STYLER_BASE[code], code);
+        const div = makeThumbWithFallback(STYLER_BASE[code], code, code);
         if(selections[idx]===code) div.classList.add('active');
         div.addEventListener('click',()=>{
           selections[idx]=code; units[idx].code=code; units[idx].w=(code==="ST3"?450:600);
@@ -257,7 +265,7 @@ function renderSlots(){
       });
     }else if(u.type==="powder"){
       ["PA","PB","PC"].forEach(code=>{
-        const div = makeThumbWithFallback(POWDER_BASE[code], code);
+        const div = makeThumbWithFallback(POWDER_BASE[code], code, code);
         if(selections[idx]===code) div.classList.add('active');
         div.addEventListener('click',()=>{
           selections[idx]=code; units[idx].code=code;
@@ -424,7 +432,8 @@ async function renderPreview(){
 
     // 하단 폭 라벨
     ctx.fillStyle="#111"; ctx.font="12px system-ui"; ctx.textAlign="center";
-    ctx.fillText(`${u.w}mm`, x + w/2, unitH + labelH - 8);
+    const dLetter = (u.type==="big"||u.type==="small") ? ((u.type==="small"?"S":"")+(selections[i]||"")) : (selections[i]||"");
+    ctx.fillText(dLetter ? (w < 90 ? `${dLetter}·${u.w}` : `${dLetter} · ${u.w}mm`) : `${u.w}mm`, x + w/2, unitH + labelH - 8);
 
     x += actualWidth; // 이미지의 실제 너비만큼 이동
     if (i < units.length - 1) {

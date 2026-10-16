@@ -949,8 +949,11 @@
     const c = $('previewCanvas'); if (!_rpOrig || snapping || !c || !isStaffView() || typeof doorMode === 'undefined') return;
     snapping = true;
     try {
-      const orig = doorMode, imgs = {};
-      for (const m of ['closed', 'open']) { doorMode = m; await _rpOrig(); await wait(200); if (c.width) imgs[m] = c.toDataURL('image/png'); }
+      const orig = doorMode; let imgs = {};
+      for (let tryN = 0; tryN < 4 && Object.keys(imgs).length < 2; tryN++) { // 휴대폰에서 그림이 늦게 그려지면 다시 시도
+        imgs = {};
+        for (const m of ['closed', 'open']) { doorMode = m; await _rpOrig(); await wait(250 + tryN * 400); if (c.width && c.height) imgs[m] = c.toDataURL('image/png'); }
+      }
       doorMode = orig; await _rpOrig();
       packImgs = imgs;
       const box = packCard.querySelector('.pk-imgs'); if (box) box.outerHTML = packImgHTML();

@@ -783,7 +783,7 @@
       designCard.before(box);
       $('mpLoadBtn').onclick = () => {
         const a = $('mpLoadCode').value.replace(/\s+/g, '').replace(/-+$/, ''), b = $('mpLoadCode2').value.replace(/\s+/g, '').replace(/^-+/, '');
-        if (/^https?:\/\//.test(a)) { location.href = a; return; } // 구성 보기 링크를 붙여넣은 경우
+        if (/^https?:\/\//.test(a)) { const u = new URL(a); u.searchParams.set('staff', '1'); location.href = u.toString(); return; } // 구성 보기 링크를 붙여넣은 경우 (직원용으로 열기)
         const raw = !b ? a : (b.startsWith('/') ? a + b : a + '-' + b);
         const [code, ...ex] = raw.split('/');
         state.mirrorPos = []; state.innerPos = []; state.mirror = 0; state.innerMirror = 0;
@@ -880,7 +880,7 @@
     },
   };
   const SIDE_H = 2145, T_POST = 1800, HALF_T_POST = (2145 - 30) / 2;
-  const isStaffView = () => { const q = new URLSearchParams(location.search); return q.get('staff') === '1' || q.get('view') === '1'; };
+  const isStaffView = () => new URLSearchParams(location.search).get('staff') === '1'; // 출고 체크리스트는 직원용 주소에서만
   const dName = (u, sel) => u.type === 'small' ? 'S' + sel : sel;
   function packList(r) {
     const groups = []; const add = (g, name, n, size) => {

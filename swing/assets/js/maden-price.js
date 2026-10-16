@@ -567,7 +567,7 @@
 
   function unitLabel(u, sel) {
     if (u.type === 'big') return `큰장 ${u.w}(${sel})`;
-    if (u.type === 'small') return `작은장 ${u.w}(${sel})`;
+    if (u.type === 'small') return `작은장 ${u.w}(S${sel})`;
     if (u.type === 'styler') return `스타일러장 ${u.w}`;
     return `화장대 ${u.w}(${sel})`;
   }
@@ -865,6 +865,98 @@
     }
   }
 
+  // ---------- 출고 체크리스트 (직원용·구성 보기 화면) ----------
+  // 디자인별 내부 부속 (통 1개 기준). rod=옷봉, half=반쪽 옷봉, long=긴선반, short=작은선반, T=T선반 기둥, hT=반T선반 기둥, dr=서랍
+  const PACK = {
+    big: {
+      A: { rod: 2, long: 1 }, B: { rod: 1, long: 1 }, C: { long: 3 },
+      D: { half: 1, long: 1, short: 4, T: 1 }, E: { rod: 1, half: 1, long: 2, short: 2, hT: 1 }, F: { rod: 1, long: 1, short: 4, hT: 1 },
+      G: { rod: 1, long: 1, dr: 1 }, H: { rod: 1, long: 1, dr: 2 }, I: { rod: 1, dr: 3 },
+    },
+    small: {
+      A: { rod: 2, long: 1 }, B: { rod: 1, long: 2 }, C: { long: 5 },
+      G: { rod: 1, long: 1, dr: 1 }, H: { rod: 1, dr: 2 }, I: { rod: 1, dr: 3 },
+    },
+  };
+  const SIDE_H = 2145, T_POST = 1800, HALF_T_POST = (2145 - 30) / 2;
+  const isStaffView = () => { const q = new URLSearchParams(location.search); return q.get('staff') === '1' || q.get('view') === '1'; };
+  const dName = (u, sel) => u.type === 'small' ? 'S' + sel : sel;
+  function packList(r) {
+    const groups = []; const add = (g, name, n, size) => {
+      if (!n) return; let G = groups.find(x => x.g === g); if (!G) groups.push(G = { g, rows: [] });
+      const key = name + '|' + (size || ''); const row = G.rows.find(x => x.key === key);
+      if (row) row.n += n; else G.rows.push({ key, name, size, n });
+    };
+    let doors = 0, units = 0;
+    r.units.forEach((u, i) => {
+      const sel = r.selections[i];
+      if (u.type !== 'big' && u.type !== 'small') return;
+      units++; doors += u.type === 'big' ? 2 : 1;
+      const p = PACK[u.type][sel] || {}; const w = u.w;
+      add('내부 부속', '긴선반', p.long, `${w - 30}mm`);
+      add('내부 부속', '작은선반', p.short, `${(w - 45) / 2}mm`);
+      add('내부 부속', '옷봉', p.rod, `${w - 40}mm`);
+      add('내부 부속', '반쪽 옷봉', p.half, `${(w - 45) / 2}mm`);
+      add('내부 부속', 'T선반 기둥', p.T, `${T_POST}mm`);
+      add('내부 부속', '반T선반 기둥', p.hT, `${HALF_T_POST}mm`);
+      add('서랍', u.type === 'big' ? '대서랍' : '소서랍', p.dr, `통 ${w}`);
+      add('하드웨어', '옷봉 소켓', ((p.rod || 0) + (p.half || 0)) * 2);
+    });
+    add('판재', '측판', units * 2, `${SIDE_H}mm`);
+    add('판재', '천판', units); add('판재', '지판', units);
+    add('도어', '도어 (큰장 2 · 작은장 1)', doors);
+    add('하드웨어', '경첩 (도어당 4)', doors * 4);
+    if (state.mirror) add('도어', `└ 그중 거울도어 (${posText(state.mirrorPos)})`, state.mirror);
+    if (state.innerMirror) add('추가상품', `도어 안쪽 거울 300×1500 (${posText(state.innerPos)})`, state.innerMirror);
+    add('추가상품', '긴 선반 추가', state.longShelf); add('추가상품', '짧은 선반 추가', state.shortShelf);
+    add('추가상품', '대서랍 추가', state.addBig); add('추가상품', '소서랍 추가', state.addSmall);
+    add('추가상품', '측판(EP)', state.side);
+    r.units.forEach((u, i) => {
+      if (u.type === 'styler') add('스타일러장·화장대', `스타일러장 ${u.w} (부속 별도 확인)`, 1);
+      if (u.type === 'powder') add('스타일러장·화장대', `화장대 ${r.selections[i]} ${POWDER_NAME[r.selections[i]] || ''} (부속 별도 확인)`, 1);
+    });
+    add('마감', `서라운드 좌·우 각 ${r.surround}mm`, 2);
+    const order = ['판재', '도어', '내부 부속', '서랍', '하드웨어', '추가상품', '스타일러장·화장대', '마감'];
+    const rowOrder = ['긴선반', '작은선반', '옷봉', '반쪽 옷봉', 'T선반 기둥', '반T선반 기둥'];
+    groups.forEach(G => G.rows.sort((a, b) => { const ia = rowOrder.indexOf(a.name), ib = rowOrder.indexOf(b.name); return ia !== ib ? ia - ib : parseFloat(b.size) - parseFloat(a.size); }));
+    return groups.sort((a, b) => order.indexOf(a.g) - order.indexOf(b.g));
+  }
+  function packHTML(r, forPrint) {
+    const units = r.units.map((u, i) => {
+      if (u.type === 'big') return `${i + 1}. 큰장 ${u.w} · <b>${dName(u, r.selections[i])}</b>`;
+      if (u.type === 'small') return `${i + 1}. 작은장 ${u.w} · <b>${dName(u, r.selections[i])}</b>`;
+      if (u.type === 'styler') return `${i + 1}. 스타일러장 ${u.w}`;
+      return `${i + 1}. 화장대 ${u.w} · <b>${r.selections[i]}</b>`;
+    }).join('<br>');
+    const groups = packList(r).map(G => `<div class="pk-g">${esc(G.g)}</div>` + G.rows.map(x =>
+      `<label class="pk-row"><input type="checkbox"><span class="pk-n">${esc(x.name)}${x.size ? ` <small>${esc(x.size)}</small>` : ''}</span><b>${x.n}</b></label>`).join('')).join('');
+    return `<div class="pk-head">구성 코드 <b>${esc(storeCode(r))}</b><br>벽 ${r.wall.toLocaleString()}mm · ${esc(state.color)} · 손잡이 ${esc(handleName())}</div>
+      <div class="pk-units">${units}</div>${groups}
+      ${forPrint ? '' : '<div class="mp-note">작은장은 SA·SB·SC·SG·SH·SI로 표시해요. 서랍장(G·H·I) 위 선반, 스타일러장·화장대 부속은 아직 기준 확인 전이에요.</div>'}`;
+  }
+  const packCSS = `.pk-head{font-size:14px;line-height:1.6;margin-bottom:8px}.pk-units{font-size:13px;line-height:1.7;background:#fbf6f5;border-radius:8px;padding:8px 10px;margin-bottom:6px}
+    .pk-g{font-weight:700;margin:14px 0 4px;padding-bottom:4px;border-bottom:2px solid #673131;color:#673131;font-size:14px}
+    .pk-row{display:flex;align-items:center;gap:10px;padding:7px 2px;border-bottom:1px solid #eee;font-size:15px;cursor:pointer}
+    .pk-row input{width:20px;height:20px;flex:none}.pk-n{flex:1}.pk-n small{color:#6b7280;margin-left:4px}.pk-row b{font-size:17px;min-width:32px;text-align:right}
+    .pk-row:has(input:checked){opacity:.45;text-decoration:line-through}`;
+  const pst = document.createElement('style'); pst.textContent = packCSS; document.head.appendChild(pst);
+  const packCard = document.createElement('div'); packCard.className = 'mp-card'; packCard.id = 'mpPack'; packCard.style.display = 'none';
+  function renderPack(r) {
+    if (!packCard.parentElement) priceCard.after(packCard);
+    packCard.style.display = 'block';
+    packCard.innerHTML = `<div class="mp-title">📦 출고 체크리스트</div>${packHTML(r)}
+      <button type="button" class="mp-cta" id="mpPackPrint" style="margin-top:14px">A4로 인쇄하기</button>`;
+    $('mpPackPrint').onclick = () => {
+      const w = window.open('', '_blank'); if (!w) { showToast('팝업이 막혀 있어요. 팝업 허용 후 다시 눌러주세요.'); return; }
+      w.document.write(`<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>메이든 출고 체크리스트</title><style>
+        body{font-family:'Noto Sans KR',sans-serif;margin:24px;color:#1c1b19}h1{font-size:20px;margin:0 0 10px}${packCSS}
+        .pk-row{padding:5px 2px}@page{size:A4;margin:12mm}</style></head><body><h1>메이든 출고 체크리스트</h1>
+        ${packHTML(r, true)}<div style="margin-top:18px;font-size:13px">출고 담당: ____________ &nbsp; 확인: ____________ &nbsp; 날짜: ____________</div>
+        <script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);
+      w.document.close();
+    };
+  }
+
   // ---------- 갱신 ----------
   let renderedOptions = false;
   function refresh() {
@@ -873,7 +965,8 @@
     const on = !!r;
     optCard.style.display = priceCard.style.display = nextCard.style.display = on ? 'block' : 'none';
     bar.style.display = on ? 'flex' : 'none';
-    if (!on) return;
+    if (!on) { packCard.style.display = 'none'; return; }
+    if (isStaffView()) renderPack(r);
     if (!renderedOptions) { renderOptions(); renderedOptions = true; }
     renderMirrorPos();
     renderPrice(r);

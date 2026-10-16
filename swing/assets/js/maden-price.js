@@ -44,7 +44,7 @@
   const handleName = () => state.handle + (AUTO_HANDLE[state.handle] ? `(${autoTone()})` : hcList(state.handle).length ? `(${state.hcolor})` : '');
   const STORE_URLS = {
     std: 'https://smartstore.naver.com/woodpecker77/products/12519634165', // 일반(몰딩)
-    mm: '',                                                                 // 무몰딩 — 스토어 상품 등록 후 상품 주소 넣기
+    mm: 'https://smartstore.naver.com/woodpecker77/products/13814513150',  // 무몰딩
   };
   const TYPE_NAME = { std: '일반(몰딩)', mm: '무몰딩' };
   const storeUrl = () => STORE_URLS[state.type] || '';

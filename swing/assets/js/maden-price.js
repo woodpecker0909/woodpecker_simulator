@@ -930,11 +930,24 @@
     }).join('<br>');
     const groups = packList(r).map(G => `<div class="pk-g">${esc(G.g)}</div>` + G.rows.map(x =>
       `<label class="pk-row"><input type="checkbox"><span class="pk-n">${esc(x.name)}${x.size ? ` <small>${esc(x.size)}</small>` : ''}</span><b>${x.n}</b></label>`).join('')).join('');
-    return `<div class="pk-head">구성 코드 <b>${esc(storeCode(r))}</b><br>벽 ${r.wall.toLocaleString()}mm · ${esc(state.color)} · 손잡이 ${esc(handleName())}</div>
+    const img = packImg ? `<img class="pk-img" src="${packImg}" alt="조립 완성 화면">` : (forPrint ? '' : '<div class="pk-img-wait">조립 완성 화면 불러오는 중…</div>');
+    return `${img}<div class="pk-head">구성 코드 <b>${esc(storeCode(r))}</b><br>벽 ${r.wall.toLocaleString()}mm · ${esc(state.color)} · 손잡이 ${esc(handleName())}</div>
       <div class="pk-units">${units}</div>${groups}
       ${forPrint ? '' : '<div class="mp-note">작은장은 SA·SB·SC·SG·SH·SI로 표시해요. 서랍장(G·H·I) 위 선반, 스타일러장·화장대 부속은 아직 기준 확인 전이에요.</div>'}`;
   }
-  const packCSS = `.pk-head{font-size:14px;line-height:1.6;margin-bottom:8px}.pk-units{font-size:13px;line-height:1.7;background:#fbf6f5;border-radius:8px;padding:8px 10px;margin-bottom:6px}
+  let packImg = '';
+  function snapPack() {
+    const c = $('previewCanvas'); if (!c || !c.width || !isStaffView()) return;
+    try { packImg = c.toDataURL('image/png'); } catch (e) { return; }
+    const box = packCard.querySelector('.pk-img, .pk-img-wait');
+    if (box) { const im = document.createElement('img'); im.className = 'pk-img'; im.alt = '조립 완성 화면'; im.src = packImg; box.replaceWith(im); }
+  }
+  if (typeof renderPreview === 'function') {
+    const _rp = renderPreview;
+    renderPreview = function (...a) { const res = _rp.apply(this, a); Promise.resolve(res).then(() => setTimeout(snapPack, 300)); return res; };
+  }
+  const packCSS = `.pk-img{display:block;width:100%;height:auto;border:1px solid #eee;border-radius:8px;margin-bottom:10px;background:#fff}.pk-img-wait{font-size:13px;color:#6b7280;margin-bottom:8px}
+    .pk-head{font-size:14px;line-height:1.6;margin-bottom:8px}.pk-units{font-size:13px;line-height:1.7;background:#fbf6f5;border-radius:8px;padding:8px 10px;margin-bottom:6px}
     .pk-g{font-weight:700;margin:14px 0 4px;padding-bottom:4px;border-bottom:2px solid #673131;color:#673131;font-size:14px}
     .pk-row{display:flex;align-items:center;gap:10px;padding:7px 2px;border-bottom:1px solid #eee;font-size:15px;cursor:pointer}
     .pk-row input{width:20px;height:20px;flex:none}.pk-n{flex:1}.pk-n small{color:#6b7280;margin-left:4px}.pk-row b{font-size:17px;min-width:32px;text-align:right}
@@ -946,11 +959,12 @@
     packCard.style.display = 'block';
     packCard.innerHTML = `<div class="mp-title">📦 출고 체크리스트</div>${packHTML(r)}
       <button type="button" class="mp-cta" id="mpPackPrint" style="margin-top:14px">A4로 인쇄하기</button>`;
+    setTimeout(snapPack, 500); setTimeout(snapPack, 1500);
     $('mpPackPrint').onclick = () => {
       const w = window.open('', '_blank'); if (!w) { showToast('팝업이 막혀 있어요. 팝업 허용 후 다시 눌러주세요.'); return; }
       w.document.write(`<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>메이든 출고 체크리스트</title><style>
         body{font-family:'Noto Sans KR',sans-serif;margin:24px;color:#1c1b19}h1{font-size:20px;margin:0 0 10px}${packCSS}
-        .pk-row{padding:5px 2px}@page{size:A4;margin:12mm}</style></head><body><h1>메이든 출고 체크리스트</h1>
+        .pk-row{padding:5px 2px}.pk-img{max-height:95mm;width:auto;max-width:100%}@page{size:A4;margin:12mm}</style></head><body><h1>메이든 출고 체크리스트</h1>
         ${packHTML(r, true)}<div style="margin-top:18px;font-size:13px">출고 담당: ____________ &nbsp; 확인: ____________ &nbsp; 날짜: ____________</div>
         <script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);
       w.document.close();

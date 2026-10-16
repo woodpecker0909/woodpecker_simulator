@@ -930,23 +930,39 @@
     }).join('<br>');
     const groups = packList(r).map(G => `<div class="pk-g">${esc(G.g)}</div>` + G.rows.map(x =>
       `<label class="pk-row"><input type="checkbox"><span class="pk-n">${esc(x.name)}${x.size ? ` <small>${esc(x.size)}</small>` : ''}</span><b>${x.n}</b></label>`).join('')).join('');
-    const img = packImg ? `<img class="pk-img" src="${packImg}" alt="조립 완성 화면">` : (forPrint ? '' : '<div class="pk-img-wait">조립 완성 화면 불러오는 중…</div>');
-    return `${img}<div class="pk-head">구성 코드 <b>${esc(storeCode(r))}</b><br>벽 ${r.wall.toLocaleString()}mm · ${esc(state.color)} · 손잡이 ${esc(handleName())}</div>
+    const sw = state.color === '콘크리트화이트' ? `url(${CONCRETE_SRC}) center/cover` : (COLOR_HEX[state.color] || '#fff');
+    return `${packImgHTML(forPrint)}<div class="pk-head">구성 코드 <b>${esc(storeCode(r))}</b> · 벽 ${r.wall.toLocaleString()}mm</div>
+      <div class="pk-spec"><span><i class="pk-sw" style="background:${sw}"></i>색상 <b>${esc(state.color)}</b></span><span>손잡이 <b>${esc(handleName())}</b></span>${extOn() && r.selections.includes('I') ? '<span>외부서랍 <b>있음</b></span>' : ''}</div>
       <div class="pk-units">${units}</div>${groups}
       ${forPrint ? '' : '<div class="mp-note">작은장은 SA·SB·SC·SG·SH·SI로 표시해요. 서랍장(G·H·I) 위 선반, 스타일러장·화장대 부속은 아직 기준 확인 전이에요.</div>'}`;
   }
-  let packImg = '';
-  function snapPack() {
-    const c = $('previewCanvas'); if (!c || !c.width || !isStaffView()) return;
-    try { packImg = c.toDataURL('image/png'); } catch (e) { return; }
-    const box = packCard.querySelector('.pk-img, .pk-img-wait');
-    if (box) { const im = document.createElement('img'); im.className = 'pk-img'; im.alt = '조립 완성 화면'; im.src = packImg; box.replaceWith(im); }
+  let packImgs = {}, snapping = false, snapTimer = null;
+  const _rpOrig = typeof renderPreview === 'function' ? renderPreview : null;
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  function packImgHTML(forPrint) {
+    const f = (m, t) => packImgs[m] ? `<figure class="pk-fig"><figcaption>${t}</figcaption><img class="pk-img" src="${packImgs[m]}" alt="${t}"></figure>` : '';
+    const h = f('closed', '문 닫은 모습 (색상·손잡이·거울·외부서랍)') + f('open', '문 연 모습 (내부 구성)');
+    return h ? `<div class="pk-imgs">${h}</div>` : (forPrint ? '' : '<div class="pk-imgs pk-img-wait">조립 완성 화면 불러오는 중…</div>');
   }
-  if (typeof renderPreview === 'function') {
-    const _rp = renderPreview;
-    renderPreview = function (...a) { const res = _rp.apply(this, a); Promise.resolve(res).then(() => setTimeout(snapPack, 300)); return res; };
+  async function snapPack() {
+    const c = $('previewCanvas'); if (!_rpOrig || snapping || !c || !isStaffView() || typeof doorMode === 'undefined') return;
+    snapping = true;
+    try {
+      const orig = doorMode, imgs = {};
+      for (const m of ['closed', 'open']) { doorMode = m; await _rpOrig(); await wait(200); if (c.width) imgs[m] = c.toDataURL('image/png'); }
+      doorMode = orig; await _rpOrig();
+      packImgs = imgs;
+      const box = packCard.querySelector('.pk-imgs'); if (box) box.outerHTML = packImgHTML();
+    } catch (e) {} finally { snapping = false; }
   }
-  const packCSS = `.pk-img{display:block;width:100%;height:auto;border:1px solid #eee;border-radius:8px;margin-bottom:10px;background:#fff}.pk-img-wait{font-size:13px;color:#6b7280;margin-bottom:8px}
+  const queueSnap = () => { clearTimeout(snapTimer); snapTimer = setTimeout(snapPack, 400); };
+  if (_rpOrig) {
+    renderPreview = function (...a) { const res = _rpOrig.apply(this, a); if (!snapping) Promise.resolve(res).then(queueSnap); return res; };
+  }
+  const packCSS = `.pk-imgs{display:grid;gap:8px;margin-bottom:10px}.pk-fig{margin:0}.pk-fig figcaption{font-size:12px;font-weight:700;color:#673131;margin-bottom:3px}
+    .pk-img{display:block;width:100%;height:auto;border:1px solid #eee;border-radius:8px;background:#fff}.pk-img-wait{font-size:13px;color:#6b7280}
+    .pk-spec{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:15px;padding:8px 10px;border:2px solid #673131;border-radius:8px;margin:6px 0 8px}
+    .pk-sw{display:inline-block;width:18px;height:18px;border:1px solid #999;border-radius:3px;vertical-align:-4px;margin-right:5px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .pk-head{font-size:14px;line-height:1.6;margin-bottom:8px}.pk-units{font-size:13px;line-height:1.7;background:#fbf6f5;border-radius:8px;padding:8px 10px;margin-bottom:6px}
     .pk-g{font-weight:700;margin:14px 0 4px;padding-bottom:4px;border-bottom:2px solid #673131;color:#673131;font-size:14px}
     .pk-row{display:flex;align-items:center;gap:10px;padding:7px 2px;border-bottom:1px solid #eee;font-size:15px;cursor:pointer}
@@ -959,12 +975,12 @@
     packCard.style.display = 'block';
     packCard.innerHTML = `<div class="mp-title">📦 출고 체크리스트</div>${packHTML(r)}
       <button type="button" class="mp-cta" id="mpPackPrint" style="margin-top:14px">A4로 인쇄하기</button>`;
-    setTimeout(snapPack, 500); setTimeout(snapPack, 1500);
+    if (!Object.keys(packImgs).length) queueSnap();
     $('mpPackPrint').onclick = () => {
       const w = window.open('', '_blank'); if (!w) { showToast('팝업이 막혀 있어요. 팝업 허용 후 다시 눌러주세요.'); return; }
       w.document.write(`<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>메이든 출고 체크리스트</title><style>
         body{font-family:'Noto Sans KR',sans-serif;margin:24px;color:#1c1b19}h1{font-size:20px;margin:0 0 10px}${packCSS}
-        .pk-row{padding:5px 2px}.pk-img{max-height:95mm;width:auto;max-width:100%}@page{size:A4;margin:12mm}</style></head><body><h1>메이든 출고 체크리스트</h1>
+        .pk-row{padding:5px 2px}.pk-imgs{grid-template-columns:1fr 1fr}.pk-img{max-height:80mm;width:auto;max-width:100%}@page{size:A4;margin:12mm}</style></head><body><h1>메이든 출고 체크리스트</h1>
         ${packHTML(r, true)}<div style="margin-top:18px;font-size:13px">출고 담당: ____________ &nbsp; 확인: ____________ &nbsp; 날짜: ____________</div>
         <script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);
       w.document.close();

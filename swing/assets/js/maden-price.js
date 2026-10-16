@@ -933,7 +933,7 @@
     const sw = state.color === '콘크리트화이트' ? `url(${CONCRETE_SRC}) center/cover` : (COLOR_HEX[state.color] || '#fff');
     return `${packImgHTML(forPrint)}<div class="pk-head">구성 코드 <b>${esc(storeCode(r))}</b> · 벽 ${r.wall.toLocaleString()}mm</div>
       <div class="pk-spec"><span><i class="pk-sw" style="background:${sw}"></i>색상 <b>${esc(state.color)}</b></span><span>손잡이 <b>${esc(handleName())}</b></span>${extOn() && r.selections.includes('I') ? '<span>외부서랍 <b>있음</b></span>' : ''}</div>
-      <div class="pk-units">${units}</div>${groups}
+      <div class="pk-units">${units}</div><div class="pk-list">${groups}</div>
       ${forPrint ? '' : '<div class="mp-note">작은장은 SA·SB·SC·SG·SH·SI로 표시해요. 서랍장(G·H·I) 위 선반, 스타일러장·화장대 부속은 아직 기준 확인 전이에요.</div>'}`;
   }
   let packImgs = {}, snapping = false, snapTimer = null;
@@ -980,7 +980,7 @@
       const w = window.open('', '_blank'); if (!w) { showToast('팝업이 막혀 있어요. 팝업 허용 후 다시 눌러주세요.'); return; }
       w.document.write(`<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>메이든 출고 체크리스트</title><style>
         body{font-family:'Noto Sans KR',sans-serif;margin:24px;color:#1c1b19}h1{font-size:20px;margin:0 0 10px}${packCSS}
-        .pk-row{padding:5px 2px}.pk-imgs{grid-template-columns:1fr 1fr}.pk-img{max-height:80mm;width:auto;max-width:100%}@page{size:A4;margin:12mm}</style></head><body><h1>메이든 출고 체크리스트</h1>
+        .pk-list{columns:2;column-gap:20px}.pk-row{padding:2px;font-size:13px;break-inside:avoid}.pk-g{break-after:avoid}.pk-row input{width:14px;height:14px}.pk-row b{font-size:14px}.pk-g{margin:8px 0 2px;font-size:13px}.pk-units{font-size:12px;line-height:1.45;padding:5px 8px}.pk-spec{font-size:13px;padding:5px 8px}.pk-imgs{grid-template-columns:1fr 1fr}.pk-img{max-height:80mm;width:auto;max-width:100%}@page{size:A4;margin:12mm}</style></head><body><h1>메이든 출고 체크리스트</h1>
         ${packHTML(r, true)}<div style="margin-top:18px;font-size:13px">출고 담당: ____________ &nbsp; 확인: ____________ &nbsp; 날짜: ____________</div>
         <script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);
       w.document.close();

@@ -89,7 +89,7 @@ function loadImageSeq(candidates){
 }
 
 // 디자인 이름 (썸네일 라벨용)
-const DESIGN_NAME = { A:'2단 옷봉', B:'옷봉+선반', C:'선반장', D:'긴T선반장', E:'반T선반', F:'6칸선반장', G:'서랍 1단', H:'서랍 2단', I:'서랍 3단',
+const DESIGN_NAME = { A:'2단 옷봉', B:'옷봉+선반', C:'선반장', D:'긴T선반장', E:'반T선반', F:'6칸선반장', G:'서랍 1단', H:'서랍 2단', I:'3단서랍(외부서랍가능)',
   ST3:'스타일러 3벌', ST5:'스타일러 5벌', PA:'수납거울 좌식', PB:'수납거울 입식', PC:'템바보드 좌식' };
 function makeThumbWithFallback(srcBase, label, badge){
   const wrap=document.createElement('div'); wrap.className="thumb";

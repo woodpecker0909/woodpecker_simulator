@@ -936,7 +936,7 @@
     add('추가상품', '대서랍 추가', state.addBig); add('추가상품', '소서랍 추가', state.addSmall);
     add('추가상품', '측판(EP)', state.side);
     r.units.forEach((u, i) => {
-      if (u.type === 'styler') add('스타일러장·화장대', `스타일러장 ${u.w} (부속 별도 확인)`, 1);
+      if (u.type === 'styler') { add('스타일러장·화장대', `스타일러장 ${u.w}`, 1); add('하드웨어', '스타일러 상부 쇼바', 2); }
       if (u.type === 'powder') add('스타일러장·화장대', `화장대 ${r.selections[i]} ${POWDER_NAME[r.selections[i]] || ''} (부속 별도 확인)`, 1);
     });
     add('마감', `서라운드 좌·우 각 ${r.surround}mm`, 2);
@@ -958,7 +958,7 @@
     return `${packImgHTML(forPrint)}<div class="pk-head"><b style="font-size:16px;color:#673131">메이든 ${TYPE_NAME[state.type]}</b><br>구성 코드 <b>${esc(storeCode(r))}</b> · 벽 ${r.wall.toLocaleString()}mm</div>
       <div class="pk-spec"><span><i class="pk-sw" style="background:${sw}"></i>색상 <b>${esc(state.color)}</b></span><span>손잡이 <b>${esc(handleName())}</b></span>${extOn() && r.selections.includes('I') ? '<span>외부서랍 <b>있음</b></span>' : ''}</div>
       <div class="pk-units">${units}</div><div class="pk-list">${groups}</div>
-      ${forPrint ? '' : '<div class="mp-note">작은장은 SA·SB·SC·SG·SH·SI로 표시해요. 서랍장(G·H·I) 위 선반, 스타일러장·화장대 부속은 아직 기준 확인 전이에요.</div>'}`;
+      ${forPrint ? '' : '<div class="mp-note">작은장은 SA·SB·SC·SG·SH·SI로 표시해요. 서랍장(G·H·I) 위 선반, 화장대 부속은 아직 기준 확인 전이에요.</div>'}`;
   }
   let packImgs = {}, snapping = false, snapTimer = null;
   const _rpOrig = typeof renderPreview === 'function' ? renderPreview : null;

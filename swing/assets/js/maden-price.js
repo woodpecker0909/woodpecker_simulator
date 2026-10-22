@@ -997,15 +997,23 @@
     .pk-row:has(input:checked){opacity:.45;text-decoration:line-through}`;
   const pst = document.createElement('style'); pst.textContent = packCSS; document.head.appendChild(pst);
   const packCard = document.createElement('div'); packCard.className = 'mp-card'; packCard.id = 'mpPack'; packCard.style.display = 'none';
-  let packMemo = '';
+  let packMemo = new URLSearchParams(location.search).get('memo') || ''; // 메모 포함 링크로 열면 메모가 같이 들어옴
   function renderPack(r) {
     if (!packCard.parentElement) priceCard.after(packCard);
     packCard.style.display = 'block';
     packCard.innerHTML = `<div class="mp-title">📦 출고 체크리스트</div>${packHTML(r)}
       <div class="pk-g">기타 메모</div>
       <textarea id="mpPackMemo" rows="3" placeholder="예) 고객님이 멀티탭 준비 · 엘리베이터 사용 예약 필요" style="width:100%;box-sizing:border-box;border:1px solid #e5d6d3;border-radius:8px;padding:8px 10px;font:inherit;font-size:15px;resize:vertical">${esc(packMemo)}</textarea>
+      <button type="button" class="mp-cta" id="mpPackLink" style="margin-top:10px;background:#fff;color:#673131;border:2px solid #673131">메모 포함 링크 복사</button>
+      <div style="font-size:13px;color:#6b7280;margin-top:4px">단톡방에 올리면 누가 열어도 구성·체크리스트·메모가 같이 보여요. 메모를 고치면 링크를 다시 복사해 보내주세요.</div>
       <button type="button" class="mp-cta" id="mpPackPrint" style="margin-top:14px">A4로 인쇄하기</button>`;
     $('mpPackMemo').oninput = e => { packMemo = e.target.value; };
+    $('mpPackLink').onclick = async () => {
+      const u = new URL(viewLink(r)); u.searchParams.set('staff', '1');
+      if (packMemo.trim()) u.searchParams.set('memo', packMemo.trim()); else u.searchParams.delete('memo');
+      const ok = await copyText(u.toString());
+      showToast(ok ? (packMemo.trim() ? '메모 포함 링크를 복사했어요. 단톡방에 붙여넣으세요.' : '링크를 복사했어요. (메모는 비어 있어요)') : '자동 복사가 안 됐어요.');
+    };
     if (!Object.keys(packImgs).length) queueSnap();
     $('mpPackPrint').onclick = () => {
       const w = window.open('', '_blank'); if (!w) { showToast('팝업이 막혀 있어요. 팝업 허용 후 다시 눌러주세요.'); return; }

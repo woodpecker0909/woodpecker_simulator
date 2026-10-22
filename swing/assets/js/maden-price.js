@@ -997,18 +997,22 @@
     .pk-row:has(input:checked){opacity:.45;text-decoration:line-through}`;
   const pst = document.createElement('style'); pst.textContent = packCSS; document.head.appendChild(pst);
   const packCard = document.createElement('div'); packCard.className = 'mp-card'; packCard.id = 'mpPack'; packCard.style.display = 'none';
+  let packMemo = '';
   function renderPack(r) {
     if (!packCard.parentElement) priceCard.after(packCard);
     packCard.style.display = 'block';
     packCard.innerHTML = `<div class="mp-title">📦 출고 체크리스트</div>${packHTML(r)}
+      <div class="pk-g">기타 메모</div>
+      <textarea id="mpPackMemo" rows="3" placeholder="예) 고객님이 멀티탭 준비 · 엘리베이터 사용 예약 필요" style="width:100%;box-sizing:border-box;border:1px solid #e5d6d3;border-radius:8px;padding:8px 10px;font:inherit;font-size:15px;resize:vertical">${esc(packMemo)}</textarea>
       <button type="button" class="mp-cta" id="mpPackPrint" style="margin-top:14px">A4로 인쇄하기</button>`;
+    $('mpPackMemo').oninput = e => { packMemo = e.target.value; };
     if (!Object.keys(packImgs).length) queueSnap();
     $('mpPackPrint').onclick = () => {
       const w = window.open('', '_blank'); if (!w) { showToast('팝업이 막혀 있어요. 팝업 허용 후 다시 눌러주세요.'); return; }
       w.document.write(`<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>메이든 출고 체크리스트</title><style>
         body{font-family:'Noto Sans KR',sans-serif;margin:24px;color:#1c1b19}h1{font-size:20px;margin:0 0 10px}${packCSS}
         .pk-list{columns:2;column-gap:20px}.pk-row{padding:2px;font-size:13px;break-inside:avoid}.pk-g{break-after:avoid}.pk-row input{width:14px;height:14px}.pk-row b{font-size:14px}.pk-g{margin:8px 0 2px;font-size:13px}.pk-units{font-size:12px;line-height:1.45;padding:5px 8px}.pk-spec{font-size:13px;padding:5px 8px}.pk-imgs{grid-template-columns:1fr 1fr}.pk-img{max-height:80mm;width:auto;max-width:100%}@page{size:A4;margin:12mm}</style></head><body><h1>메이든 출고 체크리스트</h1>
-        ${packHTML(r, true)}<div style="margin-top:18px;font-size:13px">출고 담당: ____________ &nbsp; 확인: ____________ &nbsp; 날짜: ____________</div>
+        ${packHTML(r, true)}${packMemo.trim() ? `<div class="pk-g">기타 메모</div><div style="white-space:pre-wrap;font-size:14px;border:1px solid #ccc;border-radius:6px;padding:8px 10px">${esc(packMemo)}</div>` : ''}<div style="margin-top:18px;font-size:13px">출고 담당: ____________ &nbsp; 확인: ____________ &nbsp; 날짜: ____________</div>
         <script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);
       w.document.close();
     };

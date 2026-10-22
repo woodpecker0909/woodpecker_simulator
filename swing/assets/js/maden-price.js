@@ -924,7 +924,7 @@
       add('내부 부속', 'T선반 기둥', p.T, `${T_POST}mm`);
       add('내부 부속', '반T선반 기둥', p.hT, `${HALF_T_POST}mm`);
       add('서랍', u.type === 'big' ? '대서랍' : '소서랍', p.dr, `통 ${w}`);
-      shelves += (p.long || 0) + (p.short || 0);
+      if (w >= 800) shelves += p.long || 0; // 알루미늄바: 큰장(800 이상) 긴선반만, T선반 제외
       add('하드웨어', '옷봉 소켓', ((p.rod || 0) + (p.half || 0)) * 2);
     });
     add('판재', '측판', units * 2, `${SIDE_H}mm`);
@@ -936,7 +936,7 @@
     add('추가상품', '긴 선반 추가', state.longShelf); add('추가상품', '짧은 선반 추가', state.shortShelf);
     add('추가상품', '대서랍 추가', state.addBig); add('추가상품', '소서랍 추가', state.addSmall);
     add('추가상품', '측판(EP)', state.side);
-    add('하드웨어', '알루미늄바 (선반당 1, 추가 선반 포함)', shelves + (state.longShelf || 0) + (state.shortShelf || 0));
+    add('하드웨어', '알루미늄바 (800 이상 선반당 1)', shelves + (state.longShelf || 0));
     r.units.forEach((u, i) => {
       if (u.type === 'styler') { add('스타일러장·화장대', `스타일러장 ${u.w}`, 1); add('하드웨어', '스타일러 상부 쇼바', 2); }
       if (u.type === 'powder') add('스타일러장·화장대', `화장대 ${r.selections[i]} ${POWDER_NAME[r.selections[i]] || ''} (부속 별도 확인)`, 1);

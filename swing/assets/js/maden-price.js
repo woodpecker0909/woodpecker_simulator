@@ -902,7 +902,7 @@
       G: { rod: 1, long: 1, dr: 1 }, H: { rod: 1, dr: 2 }, I: { rod: 1, dr: 3 },
     },
   };
-  const SIDE_H = 2145, T_POST = 1800, HALF_T_POST = (2145 - 30) / 2;
+  const SIDE_H = 2145, SIDE_H_MM = 2190, T_POST = 1800, HALF_T_POST = (2145 - 30) / 2;
   const isStaffView = () => new URLSearchParams(location.search).get('staff') === '1'; // 출고 체크리스트는 직원용 주소에서만
   const dName = (u, sel) => u.type === 'small' ? 'S' + sel : sel;
   function packList(r) {
@@ -927,7 +927,7 @@
       if (w >= 800) shelves += p.long || 0; // 알루미늄바: 큰장(800 이상) 긴선반만, T선반 제외
       add('하드웨어', '옷봉 소켓', ((p.rod || 0) + (p.half || 0)) * 2);
     });
-    add('판재', '측판', units * 2, `${SIDE_H}mm`);
+    add('판재', '측판', units * 2, state.type === 'mm' ? `${SIDE_H_MM}mm (천고 높이에 따라 변경 가능)` : `${SIDE_H}mm`);
     add('판재', '천판', units); add('판재', '지판', units);
     add('도어', '도어 (큰장 2 · 작은장 1)', doors);
     add('하드웨어', '경첩 (도어당 4)', doors * 4);

@@ -1,5 +1,5 @@
 // ------- 설정값
-const MIN_SURROUND = 40;
+const MIN_SURROUND = 35;
 const DOOR_GAP_MM = 3; // 큰장 중앙 간격(점선용)
 const LEFTOVER_TIE = 20;
 

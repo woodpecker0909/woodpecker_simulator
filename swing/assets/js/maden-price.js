@@ -176,7 +176,7 @@
   // ---------- 추천 조합 (작은장 최대 1개 · 1·2·3안은 서로 다른 큰장 사이즈) ----------
   (function madenPlanner() {
     if (typeof SETS === 'undefined') return;
-    const MIN_S = (typeof MIN_SURROUND !== 'undefined') ? MIN_SURROUND : 40;
+    const MIN_S = (typeof MIN_SURROUND !== 'undefined') ? MIN_SURROUND : 35;
     const TIE = (typeof LEFTOVER_TIE !== 'undefined') ? LEFTOVER_TIE : 20;
     let plans = [];
 
@@ -198,7 +198,8 @@
       const bigs = sets.map(x => ({ w: x.big, small: x.small, pr: x.priority })).sort((a, b) => b.w - a.w);
       // 큰장 너비 조합: 한 가지, 또는 이웃한 두 가지
       const groups = [];
-      bigs.forEach(b => groups.push([b])); // 한 조합 안에서는 큰장 사이즈 동일
+      bigs.forEach(b => groups.push([b])); // 한 가지 사이즈만
+      for (let k = 0; k + 1 < bigs.length; k++) if (bigs[k].w - bigs[k + 1].w === 50) groups.push([bigs[k], bigs[k + 1]]); // 이웃한 두 사이즈 섞기 (예: 950+900)
       const rows = [], seen = new Set();
       groups.forEach(g => {
         for (let n1 = 0; n1 <= 14; n1++) for (let n2 = 0; n2 <= (g[1] ? 14 : 0); n2++) {
@@ -214,7 +215,7 @@
             const used = fixedUsed + bigList.reduce((a, w) => a + w, 0) + sw;
             if (used > wall) return;
             const leftover = wall - used, surround = leftover / 2;
-            if (surround < MIN_S || surround > 100) return; // 서라운드 한쪽 40~100mm
+            if (surround < MIN_S || surround > 100) return; // 서라운드 한쪽 35~100mm
             const doors = 2 * bc + sc + fixed.length;
             if (onlyOdd && doors % 2 === 0) return;
             const key = bigList.join(',') + '|' + sw;

@@ -226,6 +226,8 @@
           });
         }
       });
+      // 같은 사이즈 조합이 하나라도 있으면 그것만 보여주고, 섞은 조합은 같은 사이즈로 안 될 때만
+      if (rows.some(r => !r.mixed)) for (let k = rows.length - 1; k >= 0; k--) if (rows[k].mixed) rows.splice(k, 1);
       if (!rows.length) { summary.innerHTML = "<div class='text-sm text-red-500 mt-5'>이 벽 길이에 맞는 메이든 조합이 없어요. 우드팩커 맞춤 붙박이장으로 상담해 주세요.</div>"; return; }
       rows.sort((a, b) => {
         if (Math.abs(a.leftover - b.leftover) > TIE) return a.leftover - b.leftover;
